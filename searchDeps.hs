@@ -1,7 +1,7 @@
 #!/usr/bin/env stack
 -- stack --install-ghc runghc --package turtle --package text --package foldl --package directory
 
-{- How many poms are given artifacts used in?
+{- Find which pom.xml files declare jars from kie-wb.war/WEB-INF/lib as dependency
 
 How to use this script?
 1. Make a list of jar files from kie cd "ls -1"
@@ -55,7 +55,7 @@ readJarFileNames = do
 
 grepArtifactUsageInPoms :: ArtifactId -> Shell Line
 grepArtifactUsageInPoms (ArtifactId artifactId) =
-    inshell ("grep --recursive --files-with-matches --include=pom.xml 'artifactId>" <> artifactId <>"'") empty
+    inshell ("grep --recursive --files-with-matches --include=pom.xml '<artifactId>" <> artifactId <> "</artifactId>'") empty
 
 toArtifactId :: JarFileName -> ArtifactId
 toArtifactId (JarFileName jfn) =
