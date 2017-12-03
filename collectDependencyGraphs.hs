@@ -16,6 +16,7 @@ $ ./collectDependencyGraphs.hs
 -}
 
 {-# LANGUAGE OverloadedStrings #-}
+import qualified Control.Foldl as Foldl
 import Data.Text (Text)
 import qualified Data.Text as Txt
 import qualified Data.Text.IO as Txt
@@ -24,13 +25,22 @@ import Prelude hiding (FilePath)
 import Turtle
 import qualified Turtle.Pattern as Pattern
 
+
 main :: IO ()
 main = do
-  testdir depTreesDir >>= (\exists -> when exists $ rmtree depTreesDir)
-  mkdir depTreesDir
-  putStrLn "Searching for deps.tgf"
-  sh $ findDependencyReports >>= copyToTarget
-  putStrLn "\nFiles copied to dependency-trees"
+    prepareOutputFolder
+    putStrLn "Collecting deps.tgf"
+    sh $ findDependencyReports >>= copyToTarget
+    copiedFilesCount <- fold (ls "dependency-trees") Foldl.length
+    putStrLn $ "\nDONE, " <> show copiedFilesCount <> " files copied to 'dependency-trees' directory"
+
+
+prepareOutputFolder :: IO ()
+prepareOutputFolder = do
+    alreadyExists <- testdir depTreesDir
+    when alreadyExists $ rmtree depTreesDir
+    mkdir depTreesDir
+
 
 depTreesDir :: FilePath
 depTreesDir = "dependency-trees"
