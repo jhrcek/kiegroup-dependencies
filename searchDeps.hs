@@ -38,19 +38,19 @@ main = do
 
 reportUsage :: ArtifactId -> IO ()
 reportUsage (ArtifactId aid) = do
-    pomsWithOccurence <- (fmap lineToText) <$> fold (grepArtifactUsageInPoms (ArtifactId aid)) Fold.list :: IO [Text]
+    pomsWithOccurence <- fmap lineToText <$> fold (grepArtifactUsageInPoms (ArtifactId aid)) Fold.list :: IO [Text]
     let numberOfPoms = length pomsWithOccurence
     if numberOfPoms < 2
       then do
         Txt.putStrLn $ "========== DELETION CANDIDATE : " <> aid <> " is used in " <> Txt.pack (show numberOfPoms) <> " poms:"
         mapM_ (Txt.putStrLn . ("    "<>) ) pomsWithOccurence
-      else do
+      else
         Txt.putStrLn $ aid <> " is used in " <> Txt.pack (show numberOfPoms) <> " poms"
 
 readJarFileNames :: IO [JarFileName]
 readJarFileNames = do
   exists <- doesFileExist "jars"
-  when (not exists) (error "Please provide list of jar filenames from WEB-INF/lib, one file per line, in a file called 'jars'")
+  unless exists (error "Please provide list of jar filenames from WEB-INF/lib, one file per line, in a file called 'jars'")
   (fmap JarFileName . Txt.lines) <$> Txt.readFile "jars"
 
 grepArtifactUsageInPoms :: ArtifactId -> Shell Line

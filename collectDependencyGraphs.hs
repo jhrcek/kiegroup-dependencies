@@ -59,7 +59,7 @@ toTargetFileName sourceReport = do
     case Txt.lines reportContents of
       (firstLine:_) -> case Txt.words firstLine of
           (_:gav:_) -> case Txt.splitOn ":" gav of
-              (groupId:artifactId:packaging:_) -> return $ depTreesDir </> (OSPath.fromText $ groupId <> "_" <> artifactId <> "_" <> packaging) <.> "tgf"
+              (groupId:artifactId:packaging:_) -> return $ depTreesDir </> OSPath.fromText (groupId <> "_" <> artifactId <> "_" <> packaging) <.> "tgf"
               _                                -> die $ "Unexpected format of GAV '" <> gav <> "' in " <> filepathToText sourceReport
           _ -> die $ "Unexpected format of first line in " <> filepathToText sourceReport
       _ -> die $ "File doesn't have lines " <> filepathToText sourceReport

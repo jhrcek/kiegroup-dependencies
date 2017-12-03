@@ -22,14 +22,25 @@ import Filesystem.Path.CurrentOS as OSPath
 import Prelude hiding (FilePath)
 import qualified TGF
 import Turtle
+import qualified Data.IntMap.Strict as IntMap
+import Data.List
 
 
 main :: IO ()
 main = do
-    putStrLn "Compressing dependency tree files"
+    putStrLn "Parsing dependency tree files"
     reportFilepaths <- fold (ls "dependency-trees") Foldl.list
-    parsedDepTrees <- fmap rights $ mapM loadDepTree reportFilepaths
-    putStrLn $ "\nDONE, " <> show (length parsedDepTrees) <> " files successfuly compressed"
+    parsedDepTrees <- rights <$> mapM loadDepTree reportFilepaths
+    putStrLn $ "\nDONE, " <> show (length parsedDepTrees) <> " files successfuly parsed"
+
+    -- TODO consolidate all deps into single file
+    putStrLn "Calculating unique dependencies"
+    let uniqueDeps = nub . sort $ concatMap (IntMap.elems . TGF.depNames) parsedDepTrees
+    putStrLn $ "Found " <> show (length uniqueDeps) <> " unique dependencies"
+
+    putStrLn "Calculating dependencies just by Grou / Artifact equality"
+    let depsGroupAndArtifact = nubBy TGF.groupArtifactEquality . sort $ concatMap (IntMap.elems . TGF.depNames) parsedDepTrees
+    putStrLn $ "Found " <> show (length depsGroupAndArtifact) <> " dependencies with equal GroupId / ArtifactId"
 
 
 loadDepTree :: FilePath -> IO (Either String TGF.Deps)
