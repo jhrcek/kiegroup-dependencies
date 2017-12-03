@@ -13,13 +13,14 @@ module TGF
   , dPackaging
   , dVersion
   , dScope
+  , equalByGroupAndArtifact
   ) where
 
 
 import Data.Attoparsec.Text (Parser, char, decimal, endOfInput, endOfLine, isEndOfLine, parseOnly, sepBy, skipMany, space, takeTill)
 import Data.Char (isDigit)
-import Data.Map (Map)
-import qualified Data.Map as Map
+import Data.IntMap.Strict (IntMap)
+import qualified Data.IntMap.Strict as IntMap
 import Data.Maybe (mapMaybe)
 import Data.Text (Text, splitOn, unpack)
 import Data.Tree
@@ -67,7 +68,7 @@ edgeDeclP = (,,)
 
 {-| Represents all data from a single .tgf file produced by mvn dependency:analyze -DoutputType=tfg-}
 data Deps = Deps
-    { depNames :: Map NodeId Dependency
+    { depNames :: IntMap Dependency
     , depTree  :: Tree NodeId
     } deriving Show
 
@@ -78,7 +79,7 @@ toDeps :: TGF -> Either String Deps
 toDeps tgf =
   let eitherErrorOrListOfDeps = mapM (\(nid, depText) -> (nid,) <$> readDependency depText) $ nodeDeclarations tgf
   in case eitherErrorOrListOfDeps of
-        Right listOfDeps ->  Right $ Deps {depNames = Map.fromList listOfDeps, depTree = toTree tgf}
+        Right listOfDeps ->  Right $ Deps {depNames = IntMap.fromList listOfDeps, depTree = toTree tgf}
         Left err         -> Left err
 
 
@@ -89,8 +90,11 @@ data Dependency = Dependency
     , dPackaging  :: Text
     , dVersion    :: Text
     , dScope      :: Text
-    } deriving Show
+    } deriving (Eq, Ord, Show)
 
+equalByGroupAndArtifact :: Dependency -> Dependency -> Bool
+equalByGroupAndArtifact d1 d2 =
+    dGroupId d1 == dGroupId d2 && dArtifactId d1 == dArtifactId d2
 
 
 readDependency :: Text -> Either String Dependency
