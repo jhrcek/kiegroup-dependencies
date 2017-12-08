@@ -11,6 +11,7 @@ module TGF
   , dGroupId
   , dArtifactId
   , dPackaging
+  , dQualifier
   , dVersion
   , dScope
   , equalByGroupAndArtifact
@@ -22,9 +23,9 @@ import Data.Char (isDigit)
 import Data.IntMap.Strict (IntMap)
 import qualified Data.IntMap.Strict as IntMap
 import Data.Maybe (mapMaybe)
-import Data.Text (Text, splitOn, unpack)
+import Data.Text (Text)
+import qualified Data.Text as Txt
 import Data.Tree
-
 
 -- Generic TGF parsing
 
@@ -72,8 +73,10 @@ data Deps = Deps
     , depTree  :: Tree NodeId
     } deriving Show
 
+
 parseDeps :: Text -> Either String Deps
 parseDeps tgfSource = parseTGF tgfSource >>= toDeps
+
 
 toDeps :: TGF -> Either String Deps
 toDeps tgf =
@@ -88,9 +91,20 @@ data Dependency = Dependency
     { dGroupId    :: Text
     , dArtifactId :: Text
     , dPackaging  :: Text
+    , dQualifier  :: Maybe Text
     , dVersion    :: Text
     , dScope      :: Text
-    } deriving (Eq, Ord, Show)
+    } deriving (Eq, Ord)
+
+
+instance Show Dependency where
+    show (Dependency grp art pac mayQualifier ver sco) =
+        Txt.unpack $ Txt.intercalate ":" fields
+      where
+        fields = case mayQualifier of
+            Just qual -> [grp, art, pac, qual, ver, sco]
+            Nothing   -> [grp, art, pac,       ver, sco]
+
 
 equalByGroupAndArtifact :: Dependency -> Dependency -> Bool
 equalByGroupAndArtifact d1 d2 =
@@ -99,12 +113,12 @@ equalByGroupAndArtifact d1 d2 =
 
 readDependency :: Text -> Either String Dependency
 readDependency txt =
-    let dep = case splitOn ":" txt of
-              [group,artifact,packaging,_qualifier,version,scope] -> Right $ Dependency group artifact packaging version scope
-              [group,artifact,packaging,version,scope]            -> Right $ Dependency group artifact packaging version scope
-              [group,artifact,packaging,version]                  -> Right $ Dependency group artifact packaging version "compile"
-              _                                                   -> Left $ "Unexpected dependency format: " ++ unpack txt
-        validateVersion d = if any isDigit (unpack (dVersion d)) || dVersion d == "jdk"
+    let dep = case Txt.splitOn ":" txt of
+              [group,artifact,packaging,qualifier,version,scope] -> Right $ Dependency group artifact packaging (Just qualifier) version scope
+              [group,artifact,packaging,version,scope]           -> Right $ Dependency group artifact packaging Nothing version scope
+              [group,artifact,packaging,version]                 -> Right $ Dependency group artifact packaging Nothing version "compile"
+              _                                                  -> Left $ "Unexpected dependency format: " ++ Txt.unpack txt
+        validateVersion d = if any isDigit (Txt.unpack (dVersion d)) || dVersion d == "jdk"
                                    then return d
                                    else Left $ "I was expecting verision to contain at least one digit in " ++ show d
         validatePackaging d = if dPackaging d `elem` knownPackagings
@@ -137,6 +151,7 @@ knownPackagings =
     ,"xml"
     ,"zip"
     ]
+
 
 knownScopes :: [Text]
 knownScopes =

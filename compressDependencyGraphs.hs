@@ -16,14 +16,14 @@ TODO
 
 import qualified Control.Foldl as Foldl
 import Data.Either
+import qualified Data.IntMap.Strict as IntMap
+import Data.List
 import qualified Data.Text as Txt
 import qualified Data.Text.IO as Txt
 import Filesystem.Path.CurrentOS as OSPath
 import Prelude hiding (FilePath)
 import qualified TGF
 import Turtle
-import qualified Data.IntMap.Strict as IntMap
-import Data.List
 
 
 main :: IO ()
@@ -33,14 +33,14 @@ main = do
     parsedDepTrees <- rights <$> mapM loadDepTree reportFilepaths
     putStrLn $ "\nDONE, " <> show (length parsedDepTrees) <> " files successfuly parsed"
 
-    -- TODO consolidate all deps into single file
-    putStrLn "Calculating unique dependencies"
-    let uniqueDeps = nub . sort $ concatMap (IntMap.elems . TGF.depNames) parsedDepTrees
-    putStrLn $ "Found " <> show (length uniqueDeps) <> " unique dependencies"
+    let allDepsFromAllTrees = sort $ concatMap (IntMap.elems . TGF.depNames) parsedDepTrees
+        uniqueDeps = nub allDepsFromAllTrees
+        uniqueDepsByGroupAndArtifactId = nubBy TGF.equalByGroupAndArtifact allDepsFromAllTrees
 
-    putStrLn "Calculating dependencies just by Grou / Artifact equality"
-    let depsGroupAndArtifact = nubBy TGF.groupArtifactEquality . sort $ concatMap (IntMap.elems . TGF.depNames) parsedDepTrees
-    putStrLn $ "Found " <> show (length depsGroupAndArtifact) <> " dependencies with equal GroupId / ArtifactId"
+    putStr "Calculating unique dependencies ... "
+    print $ length uniqueDeps
+    putStr "Calculating unique dependencies by just GroupId + ArtifactId equality ... "
+    print $ length uniqueDepsByGroupAndArtifactId
 
 
 loadDepTree :: FilePath -> IO (Either String TGF.Deps)

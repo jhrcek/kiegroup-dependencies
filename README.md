@@ -9,3 +9,4 @@ TODO
 - [ ] Given GAV show all dependency paths in all trees that lead to it
 - [ ] Given GAV show all maven modules that depend on it
 - [ ] Show conflicts (groupId:artifactId with different versions?)
+- [ ] Distinguish between internal and 3rd party dependencies
