@@ -42,6 +42,7 @@ main = do
     putStr "Calculating unique dependencies by just GroupId + ArtifactId equality ... "
     print $ length uniqueDepsByGroupAndArtifactId
 
+    putStr "Generating index.html"
     generateIndexHtml
 
 

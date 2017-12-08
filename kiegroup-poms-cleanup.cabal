@@ -16,6 +16,7 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:   TGF
+  Hs-Source-Dirs:    backend
   other-extensions:  OverloadedStrings
   ghc-options:       -Wall
   build-depends:     base,
