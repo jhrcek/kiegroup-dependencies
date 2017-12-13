@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections     #-}
+
 module TGF
   ( parseDeps
   , Tree
@@ -16,7 +17,9 @@ module TGF
   , cVersion
   , dScope
   , dOptional
+  , dCoordinate
   , equalByGroupAndArtifact
+  , mkCoord
   ) where
 
 
@@ -116,6 +119,10 @@ instance Show Coordinate where
         fields = case mayQualifier of
             Just qual -> [grp, art, pac, qual, ver]
             Nothing   -> [grp, art, pac,       ver]
+
+
+mkCoord :: Text -> Text -> Text -> Text -> Coordinate
+mkCoord grp art pac ver = Coordinate grp art pac Nothing ver
 
 
 equalByGroupAndArtifact :: Dependency -> Dependency -> Bool

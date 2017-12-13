@@ -15,6 +15,7 @@ TODO
 {-# LANGUAGE OverloadedStrings #-}
 
 import qualified Control.Foldl as Foldl
+import Control.Monad
 import Data.Either
 import qualified Data.IntMap.Strict as IntMap
 import Data.List
@@ -44,10 +45,13 @@ main = do
 printDepsSummary :: [TGF.Dependency] -> IO ()
 printDepsSummary allDepsFromAllTrees =
     let uniqueDeps = nub allDepsFromAllTrees
+        uniqueCoords = nub $ map TGF.dCoordinate uniqueDeps
         uniqueDepsByGroupAndArtifactId = nubBy TGF.equalByGroupAndArtifact allDepsFromAllTrees
     in do
         putStr "Calculating unique dependencies ... "
         print $ length uniqueDeps
+        putStr "Calculating unique coordinates  ... "
+        print $ length uniqueCoords
         putStr "Calculating unique dependencies by just GroupId + ArtifactId equality ... "
         print $ length uniqueDepsByGroupAndArtifactId
 
@@ -94,6 +98,7 @@ getTgfReports = fold (Turtle.find (suffix  ".tgf") "dependency-trees") Foldl.lis
 -- TODO deduplicate
 filepathToString :: FilePath -> String
 filepathToString = Txt.unpack . filePathToText
+
 
 filePathToText :: FilePath -> Text
 filePathToText = either (error . show) id . OSPath.toText
