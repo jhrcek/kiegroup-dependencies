@@ -5,15 +5,17 @@ module TGF
   , Tree
   , NodeId
   , Dependency
+  , Coordinate
   , depNames
   , depTree
   , Deps
-  , dGroupId
-  , dArtifactId
-  , dPackaging
-  , dQualifier
-  , dVersion
+  , cGroupId
+  , cArtifactId
+  , cPackaging
+  , cQualifier
+  , cVersion
   , dScope
+  , dOptional
   , equalByGroupAndArtifact
   ) where
 
@@ -88,40 +90,57 @@ toDeps tgf =
 
 {-| Represents data contained in " org.apache.xmlbeans:xmlbeans:jar:2.6.0:compile" -}
 data Dependency = Dependency
-    { dGroupId    :: Text
-    , dArtifactId :: Text
-    , dPackaging  :: Text
-    , dQualifier  :: Maybe Text
-    , dVersion    :: Text
+    { dCoordinate :: Coordinate
     , dScope      :: Text
+    , dOptional   :: Bool
     } deriving (Eq, Ord)
 
 
 instance Show Dependency where
-    show (Dependency grp art pac mayQualifier ver sco) =
+    show (Dependency coord scope opt) =
+        show coord ++ ":" ++ Txt.unpack scope ++ if opt then " (optional)" else ""
+
+{-| Maven Coordinates as described in https://maven.apache.org/pom.html#Maven_Coordinates -}
+data Coordinate = Coordinate
+    { cGroupId    :: Text
+    , cArtifactId :: Text
+    , cPackaging  :: Text
+    , cQualifier  :: Maybe Text
+    , cVersion    :: Text
+    } deriving (Eq, Ord)
+
+instance Show Coordinate where
+    show (Coordinate grp art pac mayQualifier ver) =
         Txt.unpack $ Txt.intercalate ":" fields
       where
         fields = case mayQualifier of
-            Just qual -> [grp, art, pac, qual, ver, sco]
-            Nothing   -> [grp, art, pac,       ver, sco]
+            Just qual -> [grp, art, pac, qual, ver]
+            Nothing   -> [grp, art, pac,       ver]
 
 
 equalByGroupAndArtifact :: Dependency -> Dependency -> Bool
 equalByGroupAndArtifact d1 d2 =
-    dGroupId d1 == dGroupId d2 && dArtifactId d1 == dArtifactId d2
+  let c1 = dCoordinate d1
+      c2 = dCoordinate d2
+  in cGroupId c1 == cGroupId c2 && cArtifactId c1 == cArtifactId c2
 
 
 readDependency :: Text -> Either String Dependency
 readDependency txt =
     let dep = case Txt.splitOn ":" txt of
-              [group,artifact,packaging,qualifier,version,scope] -> Right $ Dependency group artifact packaging (Just qualifier) version scope
-              [group,artifact,packaging,version,scope]           -> Right $ Dependency group artifact packaging Nothing version scope
-              [group,artifact,packaging,version]                 -> Right $ Dependency group artifact packaging Nothing version "compile"
-              _                                                  -> Left $ "Unexpected dependency format: " ++ Txt.unpack txt
-        validateVersion d = if any isDigit (Txt.unpack (dVersion d)) || dVersion d == "jdk"
+              [group,artifact,packaging,qualifier,version,scope] ->
+                  Right $ Dependency (Coordinate group artifact packaging (Just qualifier) version) sc opt where (sc,opt) = parseScope scope
+              [group,artifact,packaging,version,scope]           ->
+                  Right $ Dependency (Coordinate group artifact packaging Nothing          version) sc opt where (sc,opt) = parseScope scope
+              [group,artifact,packaging,version]                 ->
+                  Right $ Dependency (Coordinate group artifact packaging Nothing          version) "compile" False
+              _                                                  ->
+                  Left $ "Unexpected dependency format: " ++ Txt.unpack txt
+        validateVersion d = let ver = cVersion $ dCoordinate d
+                            in if any isDigit (Txt.unpack ver) || ver == "jdk"
                                    then return d
                                    else Left $ "I was expecting verision to contain at least one digit in " ++ show d
-        validatePackaging d = if dPackaging d `elem` knownPackagings
+        validatePackaging d = if cPackaging (dCoordinate d) `elem` knownPackagings
                                then return d
                                else Left $ "Urecognized dependency packaging in " ++ show d
         validateScope d = if dScope d `elem` knownScopes
@@ -129,6 +148,11 @@ readDependency txt =
                            else Left $ "Unrecognized scope in " ++ show d
     in dep >>= validateVersion >>= validatePackaging >>= validateScope
 
+parseScope :: Text -> (Text, Bool)
+parseScope scopeMaybeWithOptional = case Txt.words scopeMaybeWithOptional of
+    [scope, "(optional)"] -> (scope, True)
+    [scope]               -> (scope, False)
+    _                     -> error $ "Unrecognized scrope " ++ show scopeMaybeWithOptional
 
 knownPackagings :: [Text]
 knownPackagings =
@@ -152,18 +176,13 @@ knownPackagings =
     ,"zip"
     ]
 
-
 knownScopes :: [Text]
 knownScopes =
     ["compile"
-    ,"compile (optional) "
     ,"provided"
-    ,"provided (optional) "
     ,"runtime"
-    ,"runtime (optional) "
     ,"system"
     ,"test"
-    ,"test (optional) "
     ]
 
 

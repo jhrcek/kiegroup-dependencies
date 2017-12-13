@@ -34,16 +34,22 @@ main = do
     putStrLn $ "\nDONE, " <> show (length parsedDepTrees) <> " files successfuly parsed"
 
     let allDepsFromAllTrees = sort $ concatMap (IntMap.elems . TGF.depNames) parsedDepTrees
-        uniqueDeps = nub allDepsFromAllTrees
-        uniqueDepsByGroupAndArtifactId = nubBy TGF.equalByGroupAndArtifact allDepsFromAllTrees
 
-    putStr "Calculating unique dependencies ... "
-    print $ length uniqueDeps
-    putStr "Calculating unique dependencies by just GroupId + ArtifactId equality ... "
-    print $ length uniqueDepsByGroupAndArtifactId
+    printDepsSummary allDepsFromAllTrees
 
     putStr "Generating index.html"
     generateIndexHtml
+
+
+printDepsSummary :: [TGF.Dependency] -> IO ()
+printDepsSummary allDepsFromAllTrees =
+    let uniqueDeps = nub allDepsFromAllTrees
+        uniqueDepsByGroupAndArtifactId = nubBy TGF.equalByGroupAndArtifact allDepsFromAllTrees
+    in do
+        putStr "Calculating unique dependencies ... "
+        print $ length uniqueDeps
+        putStr "Calculating unique dependencies by just GroupId + ArtifactId equality ... "
+        print $ length uniqueDepsByGroupAndArtifactId
 
 
 loadDepTree :: FilePath -> IO (Either String TGF.Deps)
