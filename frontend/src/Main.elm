@@ -3,6 +3,11 @@ module Main exposing (main)
 import Html exposing (Html, text)
 import Html.Attributes exposing (href)
 import Navigation
+import Route
+
+
+type Page
+    = Home
 
 
 main : Program Flags Model Msg
@@ -25,12 +30,28 @@ type alias Flags =
 
 
 type alias Model =
-    List String
+    { kieArtifacts : List String
+    , page : Page
+    }
 
 
-init : List String -> Navigation.Location -> ( Model, Cmd Msg )
+init : Flags -> Navigation.Location -> ( Model, Cmd Msg )
 init artifactList location =
-    ( List.sort artifactList, Cmd.none )
+    ( setRoute (Route.fromLocation location)
+        { kieArtifacts = List.sort artifactList
+        , page = Home
+        }
+    , Cmd.none
+    )
+
+
+setRoute : Maybe Route.Route -> Model -> Model
+setRoute mRoute model =
+    let
+        _ =
+            Debug.log "Parsed Url " mRoute
+    in
+    model
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -40,11 +61,9 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    Html.div [] <| List.map artifactLink model
+    case model.page of
+        Home ->
+            viewHome model.kieArtifacts
 
 
-artifactLink : String -> Html Msg
-artifactLink gav =
-    Html.div []
-        [ Html.a [ href ("/" ++ gav ++ ".tgf") ] [ text gav ]
-        ]
+viewHome : Flags -> Html Msg
