@@ -36,9 +36,9 @@ import Util (filepathToString, filepathToText)
 main :: IO ()
 main = do
     prepareOutputFolder
-    putStrLn "Analyzing module structure of repos"
     moduleCoordinatesTree <- analyzeModuleStructure
     saveTree moduleCoordinatesTree
+    generateIndexHtml
 
     -- putStr "Copying dependency reports to 'dependency-trees' directory "
     -- sh $ findDependencyReports >>= copyToTarget
@@ -59,6 +59,7 @@ findDependencyReports = Turtle.find (Pattern.suffix "/deps.tgf") "."
 
 analyzeModuleStructure :: IO (Tree TGF.Coordinate)
 analyzeModuleStructure = do
+    putStrLn "Analyzing module structure of repos"
     tgfFiles <- fold findDependencyReports Foldl.list
     let dirsTree = tgfFilesToDirectoryTree tgfFiles
     buildModuleCoordinatesTree dirsTree
@@ -136,3 +137,24 @@ depTreesDir = "dependency-trees"
 
 moduleStructureReport :: FilePath
 moduleStructureReport = depTreesDir </> "module-structure.json"
+
+
+indexHtml :: FilePath
+indexHtml = depTreesDir </> "index.html"
+
+
+{-| Genereates index.html which references elm.js to drive the app. -}
+generateIndexHtml :: IO ()
+generateIndexHtml = do
+    putStrLn "Writing index.html"
+    Txt.writeFile (filepathToString indexHtml) $ Txt.unlines
+        ["<!DOCTYPE HTML>"
+        ,"<html>"
+        ,"<head>"
+        ,"  <title>kiegroup POMs cleanup</title>"
+        ,"  <script src=\"elm.js\"></script>"
+        ,"</head>"
+        ,"<body>"
+        ,"  <script type=\"text/javascript\">Elm.Main.fullscreen()</script>"
+        ,"</body>"
+        ,"</html>"]

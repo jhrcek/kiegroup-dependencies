@@ -19,13 +19,12 @@ import Control.Monad
 import Data.Either
 import qualified Data.IntMap.Strict as IntMap
 import Data.List
-import qualified Data.Text as Txt
 import qualified Data.Text.IO as Txt
 import Filesystem.Path.CurrentOS as OSPath
 import Prelude hiding (FilePath)
 import qualified TGF
 import Turtle
-import Util (filepathToString, filepathToText)
+import Util (filepathToString)
 
 
 main :: IO ()
@@ -36,11 +35,7 @@ main = do
     putStrLn $ "\nDONE, " <> show (length parsedDepTrees) <> " files successfuly parsed"
 
     let allDepsFromAllTrees = sort $ concatMap (IntMap.elems . TGF.depNames) parsedDepTrees
-
     printDepsSummary allDepsFromAllTrees
-
-    putStrLn "Generating index.html"
-    generateIndexHtml
 
 
 printDepsSummary :: [TGF.Dependency] -> IO ()
@@ -66,30 +61,6 @@ loadDepTree tgfFile = do
       Left er -> do
            putStrLn $ "\nWARNING: failed to parse " ++ filepathToString tgfFile ++ ", error was " ++ er
            return $ Left er
-
-
-{-| Genereates file index.html which references elm.js to drive the app
-    and provides the list of artifacts as flags for elm
- -}
-generateIndexHtml :: IO ()
-generateIndexHtml = do
-    depLines <- fmap tgfFilenameToDepLine <$> getTgfReports
-    let flagsForElm = Txt.cons '[' . (`Txt.snoc` ']') $ Txt.intercalate "," depLines
-    Txt.writeFile "dependency-trees/index.html" $ Txt.unlines
-        ["<!DOCTYPE HTML>"
-        ,"<html>"
-        ,"<head>"
-        ,"  <title>kiegroup POMs cleanup</title>"
-        ,"  <script src=\"elm.js\"></script>"
-        ,"</head>"
-        ,"<body>"
-        ,"  <script type=\"text/javascript\">"
-        ,"    Elm.Main.fullscreen(",flagsForElm,");"
-        ,"  </script>"
-        ,"</body>"
-        ,"</html>"]
-  where
-    tgfFilenameToDepLine = (`Txt.snoc` '"') . Txt.cons '"' .  filepathToText . dropExtension . filename
 
 
 getTgfReports :: IO [FilePath]

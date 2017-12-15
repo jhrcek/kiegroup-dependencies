@@ -1,18 +1,17 @@
 module Main exposing (main)
 
+import Data.Coordinate as Coordinate exposing (Coordinate)
+import Data.Tree as Tree exposing (Tree)
 import Html exposing (Html, text)
-import Html.Attributes exposing (href)
+import Http
 import Navigation
+import RemoteData exposing (WebData)
 import Route
 
 
-type Page
-    = Home
-
-
-main : Program Flags Model Msg
+main : Program Never Model Msg
 main =
-    Navigation.programWithFlags
+    Navigation.program
         UrlChanged
         { init = init
         , update = update
@@ -21,8 +20,24 @@ main =
         }
 
 
+type Page
+    = Home
+
+
 type Msg
     = UrlChanged Navigation.Location
+    | ModuleTreeLoaded (WebData ModuleTree)
+
+
+type alias ModuleTree =
+    Tree Coordinate
+
+
+loadData : Cmd Msg
+loadData =
+    Http.get "/module-structure.json" (Tree.decoder Coordinate.decoder)
+        |> RemoteData.sendRequest
+        |> Cmd.map ModuleTreeLoaded
 
 
 type alias Flags =
@@ -30,18 +45,18 @@ type alias Flags =
 
 
 type alias Model =
-    { kieArtifacts : List String
+    { moduleTree : WebData ModuleTree
     , page : Page
     }
 
 
-init : Flags -> Navigation.Location -> ( Model, Cmd Msg )
-init artifactList location =
+init : Navigation.Location -> ( Model, Cmd Msg )
+init location =
     ( setRoute (Route.fromLocation location)
-        { kieArtifacts = List.sort artifactList
+        { moduleTree = RemoteData.Loading
         , page = Home
         }
-    , Cmd.none
+    , loadData
     )
 
 
@@ -56,14 +71,22 @@ setRoute mRoute model =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    ( model, Cmd.none )
+    case msg of
+        UrlChanged newUrl ->
+            ( model, Cmd.none )
+
+        ModuleTreeLoaded mt ->
+            ( { model | moduleTree = mt }, Cmd.none )
 
 
 view : Model -> Html Msg
 view model =
     case model.page of
         Home ->
-            viewHome model.kieArtifacts
+            viewHome model.moduleTree
 
 
-viewHome : Flags -> Html Msg
+viewHome : WebData ModuleTree -> Html Msg
+viewHome x =
+    Html.div []
+        [ text <| toString x ]

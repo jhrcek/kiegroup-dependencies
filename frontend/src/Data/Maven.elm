@@ -4,14 +4,14 @@ import UrlParser
 
 
 type Coordinate
-    = Coordinate
+    = Coordinate String
 
 
 coordinateToString : Coordinate -> String
-coordinateToString =
-    Debug.crash "TODO"
+coordinateToString (Coordinate c) =
+    c
 
 
 coordinateParser : UrlParser.Parser (Coordinate -> a) a
 coordinateParser =
-    Debug.crash "TODO"
+    UrlParser.custom "COORDINATE" (Ok << Coordinate)

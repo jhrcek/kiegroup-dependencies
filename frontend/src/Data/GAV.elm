@@ -15,42 +15,42 @@ import UrlParser
 
 
 type GroupId
-    = GroupId
+    = GroupId String
 
 
 type ArtifactId
-    = ArtifactId
+    = ArtifactId String
 
 
 type Version
-    = Version
+    = Version String
 
 
 groupIdParser : UrlParser.Parser (GroupId -> a) a
 groupIdParser =
-    Debug.crash "TODO"
+    UrlParser.custom "GROUP_ID" (Ok << GroupId)
 
 
 artifactIdParser : UrlParser.Parser (ArtifactId -> a) a
 artifactIdParser =
-    Debug.crash "TODO"
+    UrlParser.custom "ARTIFACT_ID" (Ok << ArtifactId)
 
 
 versionParser : UrlParser.Parser (Version -> a) a
 versionParser =
-    Debug.crash "TODO"
-
-
-versionToString : Version -> String
-versionToString =
-    Debug.crash "TODO"
-
-
-artifactIdToString : ArtifactId -> String
-artifactIdToString =
-    Debug.crash "TODO"
+    UrlParser.custom "VERSION" (Ok << Version)
 
 
 groupIdToString : GroupId -> String
-groupIdToString =
-    Debug.crash "TODO"
+groupIdToString (GroupId g) =
+    g
+
+
+artifactIdToString : ArtifactId -> String
+artifactIdToString (ArtifactId a) =
+    a
+
+
+versionToString : Version -> String
+versionToString (Version v) =
+    v

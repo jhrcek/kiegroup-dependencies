@@ -4,14 +4,14 @@ import UrlParser
 
 
 type RepoId
-    = RepoId
-
-
-repoToString : RepoId -> String
-repoToString =
-    Debug.crash "TODO"
+    = RepoId String
 
 
 repoParser : UrlParser.Parser (RepoId -> a) a
 repoParser =
-    Debug.crash "TODO"
+    UrlParser.custom "REPOSITORY" (Ok << RepoId)
+
+
+repoToString : RepoId -> String
+repoToString (RepoId r) =
+    r
