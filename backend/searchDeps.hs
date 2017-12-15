@@ -1,5 +1,5 @@
 #!/usr/bin/env stack
--- stack --install-ghc runghc --package turtle --package text --package foldl --package directory
+-- stack runghc --package turtle --package text --package foldl --package directory
 
 {- Find which pom.xml files declare jars from kie-wb.war/WEB-INF/lib as dependency
 

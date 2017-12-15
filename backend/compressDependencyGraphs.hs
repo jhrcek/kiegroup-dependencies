@@ -1,5 +1,5 @@
 #!/usr/bin/env stack
--- stack --install-ghc runghc
+-- stack runghc
   --package turtle
   --package system-filepath
   --package text
@@ -38,7 +38,7 @@ main = do
 
     printDepsSummary allDepsFromAllTrees
 
-    putStr "Generating index.html"
+    putStrLn "Generating index.html"
     generateIndexHtml
 
 
