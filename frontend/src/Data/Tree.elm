@@ -1,4 +1,4 @@
-module Data.Tree exposing (Tree, decoder)
+module Data.Tree exposing (Tree(Node), decoder)
 
 import Json.Decode as Decode exposing (Decoder)
 

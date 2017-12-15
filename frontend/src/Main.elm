@@ -5,8 +5,9 @@ import Data.Tree as Tree exposing (Tree)
 import Html exposing (Html, text)
 import Http
 import Navigation
-import RemoteData exposing (WebData)
+import RemoteData exposing (RemoteData(..), WebData)
 import Route
+import Views.Tree
 
 
 main : Program Never Model Msg
@@ -87,6 +88,16 @@ view model =
 
 
 viewHome : WebData ModuleTree -> Html Msg
-viewHome x =
-    Html.div []
-        [ text <| toString x ]
+viewHome rdTree =
+    case rdTree of
+        NotAsked ->
+            text "not asked"
+
+        Loading ->
+            text "loading"
+
+        Failure e ->
+            text <| toString e
+
+        Success tree ->
+            Views.Tree.viewTree tree
