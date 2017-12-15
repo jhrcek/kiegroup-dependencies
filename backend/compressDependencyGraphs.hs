@@ -25,6 +25,7 @@ import Filesystem.Path.CurrentOS as OSPath
 import Prelude hiding (FilePath)
 import qualified TGF
 import Turtle
+import Util (filepathToString, filepathToText)
 
 
 main :: IO ()
@@ -88,17 +89,8 @@ generateIndexHtml = do
         ,"</body>"
         ,"</html>"]
   where
-    tgfFilenameToDepLine = (`Txt.snoc` '"') . Txt.cons '"' .  filePathToText . dropExtension . filename
+    tgfFilenameToDepLine = (`Txt.snoc` '"') . Txt.cons '"' .  filepathToText . dropExtension . filename
 
 
 getTgfReports :: IO [FilePath]
 getTgfReports = fold (Turtle.find (suffix  ".tgf") "dependency-trees") Foldl.list
-
-
--- TODO deduplicate
-filepathToString :: FilePath -> String
-filepathToString = Txt.unpack . filePathToText
-
-
-filePathToText :: FilePath -> Text
-filePathToText = either (error . show) id . OSPath.toText

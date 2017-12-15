@@ -22,7 +22,7 @@ module TGF
   , mkCoord
   ) where
 
-
+import Data.Aeson
 import Data.Attoparsec.Text (Parser, char, decimal, endOfInput, endOfLine, isEndOfLine, parseOnly, sepBy, skipMany, space, takeTill)
 import Data.Char (isDigit)
 import Data.IntMap.Strict (IntMap)
@@ -111,6 +111,14 @@ data Coordinate = Coordinate
     , cQualifier  :: Maybe Text
     , cVersion    :: Text
     } deriving (Eq, Ord)
+
+instance ToJSON Coordinate where
+    toJSON (Coordinate groupId artifactId packaging _qualifier version) =
+        object [ "grp" .= groupId
+               , "art" .= artifactId
+               , "pkg" .= packaging
+               , "ver" .= version
+               ]
 
 instance Show Coordinate where
     show (Coordinate grp art pac mayQualifier ver) =
