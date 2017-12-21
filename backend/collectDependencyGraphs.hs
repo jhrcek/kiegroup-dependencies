@@ -20,7 +20,7 @@ $ ./collectDependencyGraphs.hs
 import qualified Control.Foldl as Foldl
 import qualified Data.Aeson as Json
 import qualified Data.ByteString.Lazy as LBS
-import Data.List
+import qualified Data.List as List
 import Data.Text (Text)
 import qualified Data.Text as Txt
 import qualified Data.Text.IO as Txt
@@ -68,7 +68,7 @@ analyzeModuleStructure = do
 -- Build tree of simple dir names from list of deps.tgh files.  At each node of the tree there's a deps.tgf file
 tgfFilesToDirectoryTree :: [FilePath] -> Tree FilePath
 tgfFilesToDirectoryTree tgfFiles =
-    buildModuleDirsTree . fmap splitDirectories $ sort tgfFiles
+    buildModuleDirsTree . fmap splitDirectories $ List.sort tgfFiles
 
 
 buildModuleDirsTree :: [[FilePath]] -> Tree FilePath
@@ -76,7 +76,7 @@ buildModuleDirsTree ps
     | null ps   = Node "DUMMY" []
     | otherwise = Node
         (head $ head ps)
-        (map buildModuleDirsTree . groupBy (\a b -> head a == head b) . sort $ filter ((>1).length {-ignore deps.tgf-}) $ map tail ps)
+        (map buildModuleDirsTree . List.groupBy (\a b -> head a == head b) . List.sort $ filter ((>1).length {-ignore deps.tgf-}) $ map tail ps)
 
 
 -- Retrieve list of TGF.Coordinates by parging it out from deps.tgf file at each node of the tree

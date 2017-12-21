@@ -18,7 +18,7 @@ import qualified Control.Foldl as Foldl
 import Control.Monad
 import Data.Either
 import qualified Data.IntMap.Strict as IntMap
-import Data.List
+import qualified Data.List as List
 import qualified Data.Text.IO as Txt
 import Filesystem.Path.CurrentOS as OSPath
 import Prelude hiding (FilePath)
@@ -33,16 +33,19 @@ main = do
     reportFilepaths <- getTgfReports
     parsedDepTrees <- rights <$> mapM loadDepTree reportFilepaths
     putStrLn $ "\nDONE, " <> show (length parsedDepTrees) <> " files successfuly parsed"
-
-    let allDepsFromAllTrees = sort $ concatMap (IntMap.elems . TGF.depNames) parsedDepTrees
-    printDepsSummary allDepsFromAllTrees
+    let ns = map (length . snd) . IntMap.toList . IntMap.fromListWith (++) . fmap (fmap (:[])) $ concatMap (IntMap.toList . TGF.depNames) parsedDepTrees
+    print ns
+    -- let allDepsFromAllTrees = sort $ concatMap (IntMap.elems . TGF.depNames) parsedDepTrees
+    --     uniqueDeps = nub allDepsFromAllTrees
+    -- mapM_ print . sort . map ( \g -> (length g, head g)) .group . sort $ map (TGF.cPackaging . TGF.dCoordinate) uniqueDeps
+    --printDepsSummary allDepsFromAllTrees
 
 
 printDepsSummary :: [TGF.Dependency] -> IO ()
 printDepsSummary allDepsFromAllTrees =
-    let uniqueDeps = nub allDepsFromAllTrees
-        uniqueCoords = nub $ map TGF.dCoordinate uniqueDeps
-        uniqueDepsByGroupAndArtifactId = nubBy TGF.equalByGroupAndArtifact allDepsFromAllTrees
+    let uniqueDeps = List.nub allDepsFromAllTrees
+        uniqueCoords = List.nub $ map TGF.dCoordinate uniqueDeps
+        uniqueDepsByGroupAndArtifactId = List.nubBy TGF.equalByGroupAndArtifact allDepsFromAllTrees
     in do
         putStr "Calculating unique dependencies ... "
         print $ length uniqueDeps
@@ -64,4 +67,4 @@ loadDepTree tgfFile = do
 
 
 getTgfReports :: IO [FilePath]
-getTgfReports = fold (Turtle.find (suffix  ".tgf") "dependency-trees") Foldl.list
+getTgfReports = fold (Turtle.find (suffix  ".tgf") ".") Foldl.list

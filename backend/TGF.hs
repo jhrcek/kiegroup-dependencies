@@ -130,7 +130,7 @@ instance Show Coordinate where
 
 
 mkCoord :: Text -> Text -> Text -> Text -> Coordinate
-mkCoord grp art pac ver = Coordinate grp art pac Nothing ver
+mkCoord grp art pac = Coordinate grp art pac Nothing
 
 
 equalByGroupAndArtifact :: Dependency -> Dependency -> Bool
