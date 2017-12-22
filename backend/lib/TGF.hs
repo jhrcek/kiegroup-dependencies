@@ -20,6 +20,7 @@ module TGF
   , dCoordinate
   , equalByGroupAndArtifact
   , mkCoord
+  , extractRootCoordinate
   ) where
 
 import Data.Aeson
@@ -28,9 +29,13 @@ import Data.Char (isDigit)
 import Data.IntMap.Strict (IntMap)
 import qualified Data.IntMap.Strict as IntMap
 import Data.Maybe (mapMaybe)
+import Data.Monoid ((<>))
 import Data.Text (Text)
 import qualified Data.Text as Txt
 import Data.Tree
+import Filesystem.Path (FilePath)
+import Prelude hiding (FilePath)
+import Util (filepathToText)
 
 -- Generic TGF parsing
 
@@ -212,3 +217,14 @@ buildTree :: NodeId -> [EdgeData] -> Tree NodeId
 buildTree rootId edges =
   let childrenOfRoot = mapMaybe (\(fromNodeId, toNodeId, _edgeText) -> if rootId == fromNodeId then Just toNodeId else Nothing) edges
   in Node rootId . fmap (`buildTree` edges) $ childrenOfRoot
+
+
+{-| Extract Maven Coordinate of a maven module from the dependency tree root of it's associated dependency tree TGF file -}
+extractRootCoordinate :: FilePath -> Text -> Either Text Coordinate
+extractRootCoordinate pathOfTgf contentsOfTgf = case Txt.lines contentsOfTgf of
+    (firstLine:_) -> case Txt.words firstLine of
+        (_:gav:_) -> case Txt.splitOn ":" gav of
+            [groupId, artifactId, packaging, version] -> Right $ TGF.mkCoord groupId artifactId packaging version
+            _                                         -> Left $ "ERROR: I was expecting the first line of " <> filepathToText pathOfTgf <> " to contain 'groupId:artifactId:packaging:version' but it was '" <> gav <> "'"
+        _ -> Left $ "ERROR: I was expecting the first line of " <> filepathToText pathOfTgf <> " to have two space-separated Strings"
+    _ -> Left $ "ERROR: File " <> filepathToText pathOfTgf <> " was empty"

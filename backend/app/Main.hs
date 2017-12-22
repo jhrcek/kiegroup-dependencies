@@ -17,11 +17,12 @@ $ ./collectDependencyGraphs.hs
 -}
 
 {-# LANGUAGE OverloadedStrings #-}
+module Main where
+
 import qualified Control.Foldl as Foldl
 import qualified Data.Aeson as Json
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.List as List
-import Data.Text (Text)
 import qualified Data.Text as Txt
 import qualified Data.Text.IO as Txt
 import Data.Tree (Tree (Node))
@@ -31,7 +32,7 @@ import qualified TGF
 import Turtle
 import qualified Turtle.Pattern as Pattern
 import Util (filepathToString, filepathToText)
-
+import qualified TGF.IO
 
 main :: IO ()
 main = do
@@ -39,6 +40,10 @@ main = do
     moduleCoordinatesTree <- analyzeModuleStructure
     saveTree moduleCoordinatesTree
     generateIndexHtml
+
+    Just tgfFile <- fold findDependencyReports Foldl.head
+    print tgfFile
+    TGF.IO.loadTgfFromFile tgfFile >>= print
 
     -- putStr "Copying dependency reports to 'dependency-trees' directory "
     -- sh $ findDependencyReports >>= copyToTarget
@@ -79,7 +84,7 @@ buildModuleDirsTree ps
         (map buildModuleDirsTree . List.groupBy (\a b -> head a == head b) . List.sort $ filter ((>1).length {-ignore deps.tgf-}) $ map tail ps)
 
 
--- Retrieve list of TGF.Coordinates by parging it out from deps.tgf file at each node of the tree
+-- Retrieve list of TGF.Coordinates by parsing it out from deps.tgf file at each node of the tree
 buildModuleCoordinatesTree :: Tree FilePath -> IO (Tree TGF.Coordinate)
 buildModuleCoordinatesTree (Node curDir subdirs) = do
   let tgfFile = curDir </> OSPath.fromText "deps.tgf"
@@ -87,7 +92,7 @@ buildModuleCoordinatesTree (Node curDir subdirs) = do
   coordHere <- if tgfFileExists
          then do
             contents <- Txt.readFile $ filepathToString tgfFile
-            let eitherCoord = extractCoordinate tgfFile contents
+            let eitherCoord = TGF.extractRootCoordinate tgfFile contents
             return $ either (const $ TGF.mkCoord "" "" "" "") id eitherCoord
          else do
            Txt.putStrLn $ "WARNING: file " <> filepathToText tgfFile <> " doesn't exist!"
@@ -102,20 +107,9 @@ buildModuleCoordinatesTree (Node curDir subdirs) = do
 toTargetFileName :: FilePath -> IO FilePath
 toTargetFileName sourceReport = do
     reportContents <- Txt.readFile $ filepathToString sourceReport
-    case extractCoordinate sourceReport reportContents of
+    case TGF.extractRootCoordinate sourceReport reportContents of
       Right coord -> return $ depTreesDir </> OSPath.fromText (Txt.pack (show coord)) <.> "tgf"
       Left er     -> die er
-
-
-{-| Extract Maven Coordinate of a module from it's associated TGF file -}
-extractCoordinate :: FilePath -> Text -> Either Text TGF.Coordinate
-extractCoordinate pathOfTgf contentsOfTgf = case Txt.lines contentsOfTgf of
-    (firstLine:_) -> case Txt.words firstLine of
-        (_:gav:_) -> case Txt.splitOn ":" gav of
-            [groupId, artifactId, packaging, version] -> Right $ TGF.mkCoord groupId artifactId packaging version
-            _                                         -> Left $ "ERROR: I was expecting the first line of " <> filepathToText pathOfTgf <> " to contain 'groupId:artifactId:packaging:version' but it was '" <> gav <> "'"
-        _ -> Left $ "ERROR: I was expecting the first line of " <> filepathToText pathOfTgf <> " to have two space-separated Strings"
-    _ -> Left $ "ERROR: File " <> filepathToText pathOfTgf <> " was empty"
 
 
 copyToTarget :: FilePath -> Shell ()
