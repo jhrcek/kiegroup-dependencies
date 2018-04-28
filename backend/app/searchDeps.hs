@@ -1,10 +1,10 @@
 #!/usr/bin/env stack
--- stack runghc --package turtle --package text --package foldl --package directory
+-- stack script --resolver=lts-11.6 --package turtle,text,foldl,directory
 
 {- Find which pom.xml files declare jars from kie-wb.war/WEB-INF/lib as dependency
 
 How to use this script?
-1. Make a list of jar files from kie cd "ls -1"
+1. Make a list of jar files
 $ cd kie-wb.war/WEB-INF/lib
 $ ls -1 > PATH/TO/kiegroup/jars
 
@@ -14,7 +14,7 @@ $ ./searchDeps.hs
 
 OUTPUT
 Report about which poms are using which artifacts
-with warnings when artifact is candidate for deletion (used in too foo poms)
+with warnings when artifact is candidate for deletion (used in too few poms)
 -}
 
 {-# LANGUAGE OverloadedStrings #-}
@@ -50,12 +50,13 @@ reportUsage (ArtifactId aid) = do
 readJarFileNames :: IO [JarFileName]
 readJarFileNames = do
   exists <- doesFileExist "jars"
-  unless exists (error "Please provide list of jar filenames from WEB-INF/lib, one file per line, in a file called 'jars'")
+  unless exists (die "Please provide list of jar filenames from WEB-INF/lib, one file per line, in a file called 'jars'")
   (fmap JarFileName . Txt.lines) <$> Txt.readFile "jars"
 
 grepArtifactUsageInPoms :: ArtifactId -> Shell Line
 grepArtifactUsageInPoms (ArtifactId artifactId) =
-    inshell ("grep --recursive --files-with-matches --include=pom.xml '<artifactId>" <> artifactId <> "</artifactId>'") empty
+    -- Why "|| true"? When grep finds no ocurrence, it returns 1, leading to Shell throwing ExitCode exception -> just return empty list of lines in that case
+    inshell ("grep --recursive --files-with-matches --include=pom.xml '<artifactId>" <> artifactId <> "</artifactId>' || true") empty
 
 toArtifactId :: JarFileName -> ArtifactId
 toArtifactId (JarFileName jfn) =
