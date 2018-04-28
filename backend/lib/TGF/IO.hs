@@ -1,4 +1,7 @@
-module TGF.IO (loadTgfFromFile) where
+module TGF.IO
+   ( loadDepsFromFile
+   , loadTgfFromFile
+   ) where
 
 import Control.Monad
 import Data.Either
@@ -9,12 +12,10 @@ import qualified TGF
 import Util (filepathToString)
 
 
-loadTgfFromFile :: FilePath -> IO (Either String TGF.Deps)
-loadTgfFromFile tgfFile = do
-    tgfContents <- Txt.readFile (filepathToString tgfFile)
-    putStr "."
-    case TGF.parseDeps tgfContents of
-      Right deps -> return $ Right deps
-      Left er -> do
-           putStrLn $ "\nWARNING: failed to parse " ++ filepathToString tgfFile ++ ", error was " ++ er
-           return $ Left er
+loadDepsFromFile :: FilePath -> IO (Either String TGF.Deps)
+loadDepsFromFile tgfFile = do
+  eitherTgf <- loadTgfFromFile tgfFile
+  return $ eitherTgf >>= TGF.toDeps
+
+loadTgfFromFile :: FilePath -> IO (Either String TGF.TGF)
+loadTgfFromFile tgfFile = TGF.parseTGF <$> Txt.readFile (filepathToString tgfFile)

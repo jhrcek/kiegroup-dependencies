@@ -15,17 +15,18 @@ module Main where
 import qualified Control.Foldl as Foldl
 import qualified Data.Aeson as Json
 import qualified Data.ByteString.Lazy as LBS
+import Data.Either (partitionEithers)
 import qualified Data.List as List
 import qualified Data.Text as Txt
 import qualified Data.Text.IO as Txt
 import Data.Tree (Tree (Node))
-import qualified Filesystem.Path.CurrentOS as OSPath
 import Prelude hiding (FilePath)
 import qualified TGF
+import qualified TGF.IO
 import Turtle
 import qualified Turtle.Pattern as Pattern
 import Util (filepathToString, filepathToText)
---import qualified TGF.IO
+
 
 main :: IO ()
 main = do
@@ -33,6 +34,12 @@ main = do
     moduleCoordinatesTree <- analyzeModuleStructure
     saveTree moduleCoordinatesTree
     generateIndexHtml
+
+    tgfFiles <- fold findDependencyReports Foldl.list
+    eitherTgfs <- mapM TGF.IO.loadTgfFromFile tgfFiles
+    let (parseErrors, parsedTgfs) = partitionEithers eitherTgfs
+    print $ length parseErrors
+    mapM_ print . List.sort . fmap (\g -> (length g, head g)) . List.group . List.sort $ concatMap (fmap snd . TGF.nodeDeclarations) parsedTgfs
 
 
 prepareOutputFolder :: IO ()
@@ -71,7 +78,7 @@ buildModuleDirsTree ps
 -- Retrieve list of TGF.Coordinates by parsing it out from deps.tgf file at each node of the tree
 buildModuleCoordinatesTree :: Tree FilePath -> IO (Tree TGF.Coordinate)
 buildModuleCoordinatesTree (Node curDir subdirs) = do
-    let tgfFile = curDir </> OSPath.fromText "deps.tgf"
+    let tgfFile = curDir </> "deps.tgf"
         dummyCoord = TGF.mkCoord "" "" "" ""
     tgfFileExists <- testfile tgfFile
     coordHere <- if tgfFileExists

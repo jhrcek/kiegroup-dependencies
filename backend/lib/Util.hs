@@ -1,13 +1,12 @@
 module Util  (filepathToText, filepathToString) where
 
-import Data.Text (Text)
-import qualified Data.Text as Text
-import Filesystem.Path (FilePath)
-import qualified Filesystem.Path.CurrentOS as OSPath
+import Data.Text (Text, unpack)
 import Prelude hiding (FilePath)
+import Turtle (FilePath)
+import Turtle.Format (format, fp)
 
 filepathToText :: FilePath -> Text
-filepathToText = either (error . show) id . OSPath.toText
+filepathToText = format fp
 
 filepathToString :: FilePath -> String
-filepathToString = Text.unpack . filepathToText
+filepathToString = unpack . filepathToText
