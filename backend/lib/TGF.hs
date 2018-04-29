@@ -148,6 +148,8 @@ equalByGroupAndArtifact d1 d2 =
       c2 = dCoordinate d2
   in cGroupId c1 == cGroupId c2 && cArtifactId c1 == cArtifactId c2
 
+readCoordinate :: Text -> Either String Coordinate
+readCoordinate = fmap dCoordinate . readDependency
 
 readDependency :: Text -> Either String Dependency
 readDependency txt =
