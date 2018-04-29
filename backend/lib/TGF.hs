@@ -229,7 +229,7 @@ extractRootCoordinate pathOfTgf contentsOfTgf = case Txt.lines contentsOfTgf of
     (firstLine:_) -> case Txt.words firstLine of
         (_:gav:_) -> case Txt.splitOn ":" gav of
             [groupId, artifactId, packaging, version]
-                -> Right $ TGF.mkCoord groupId artifactId packaging version
+                -> Right $ mkCoord groupId artifactId packaging version
             _   -> Left $ "ERROR: I was expecting the first line of " <> filepathToText pathOfTgf <> " to contain 'groupId:artifactId:packaging:version' but it was '" <> gav <> "'"
         _ -> Left $ "ERROR: I was expecting the first line of " <> filepathToText pathOfTgf <> " to have two space-separated Strings"
     _ -> Left $ "ERROR: File " <> filepathToText pathOfTgf <> " was empty"
