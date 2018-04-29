@@ -7,6 +7,7 @@ module TGF
   , Tree
   , TGF
   , nodeDeclarations
+  , edgeDeclarations
   , NodeId
   , Dependency
   , Coordinate
@@ -25,21 +26,24 @@ module TGF
   , mkCoord
   , extractRootCoordinate
   , toDeps
+  , readCoordinate
   ) where
 
-import Data.Aeson
-import Data.Attoparsec.Text (Parser, char, decimal, endOfInput, endOfLine, isEndOfLine, parseOnly, sepBy, skipMany, space, takeTill)
-import Data.Char (isDigit)
-import Data.IntMap.Strict (IntMap)
-import qualified Data.IntMap.Strict as IntMap
-import Data.Maybe (mapMaybe)
-import Data.Monoid ((<>))
-import Data.Text (Text)
-import qualified Data.Text as Txt
-import Data.Tree
-import Filesystem.Path (FilePath)
-import Prelude hiding (FilePath)
-import Util (filepathToText)
+import           Data.Aeson
+import           Data.Attoparsec.Text (Parser, char, decimal, endOfInput,
+                                       endOfLine, isEndOfLine, parseOnly, sepBy,
+                                       skipMany, space, takeTill)
+import           Data.Char            (isDigit)
+import           Data.IntMap.Strict   (IntMap)
+import qualified Data.IntMap.Strict   as IntMap
+import           Data.Maybe           (mapMaybe)
+import           Data.Monoid          ((<>))
+import           Data.Text            (Text)
+import qualified Data.Text            as Txt
+import           Data.Tree
+import           Filesystem.Path      (FilePath)
+import           Prelude              hiding (FilePath)
+import           Util                 (filepathToText)
 
 -- Generic TGF parsing
 
@@ -155,9 +159,11 @@ readDependency :: Text -> Either String Dependency
 readDependency txt =
     let dep = case Txt.splitOn ":" txt of
               [group,artifact,packaging,qualifier,version,scope] ->
-                  Right $ Dependency (Coordinate group artifact packaging (Just qualifier) version) sc opt where (sc,opt) = parseScope scope
+                  Right $ Dependency (Coordinate group artifact packaging (Just qualifier) version) sc opt
+                      where (sc,opt) = parseScope scope
               [group,artifact,packaging,version,scope]           ->
-                  Right $ Dependency (Coordinate group artifact packaging Nothing          version) sc opt where (sc,opt) = parseScope scope
+                  Right $ Dependency (Coordinate group artifact packaging Nothing          version) sc opt
+                      where (sc,opt) = parseScope scope
               [group,artifact,packaging,version]                 ->
                   Right $ Dependency (Coordinate group artifact packaging Nothing          version) "compile" False
               _                                                  ->
@@ -188,6 +194,7 @@ knownPackagings =
     ,"eclipse-repository"
     ,"eclipse-test-plugin"
     ,"gwt-lib"
+    ,"gwt-app"
     ,"jar"
     ,"kjar"
     ,"maven-archetype"
@@ -222,7 +229,7 @@ toTree tgf =
 buildTree :: NodeId -> [EdgeData] -> Tree NodeId
 buildTree rootId edges =
   let childrenOfRoot = mapMaybe (\(fromNodeId, toNodeId, _edgeText) -> if rootId == fromNodeId then Just toNodeId else Nothing) edges
-  in Node rootId . fmap (`buildTree` edges) $ childrenOfRoot
+  in Node rootId $ (`buildTree` edges) <$> childrenOfRoot
 
 
 {-| Extract Maven Coordinate of a maven module from the dependency tree root of it's associated dependency tree TGF file -}
@@ -232,6 +239,7 @@ extractRootCoordinate pathOfTgf contentsOfTgf = case Txt.lines contentsOfTgf of
         (_:gav:_) -> case Txt.splitOn ":" gav of
             [groupId, artifactId, packaging, version]
                 -> Right $ mkCoord groupId artifactId packaging version
-            _   -> Left $ "ERROR: I was expecting the first line of " <> filepathToText pathOfTgf <> " to contain 'groupId:artifactId:packaging:version' but it was '" <> gav <> "'"
+            _   -> Left $ "ERROR: I was expecting the first line of " <> filepathToText pathOfTgf
+                          <> " to contain 'groupId:artifactId:packaging:version' but it was '" <> gav <> "'"
         _ -> Left $ "ERROR: I was expecting the first line of " <> filepathToText pathOfTgf <> " to have two space-separated Strings"
     _ -> Left $ "ERROR: File " <> filepathToText pathOfTgf <> " was empty"

@@ -13,21 +13,21 @@ $ stack exec collect-deps PATH/TO/kiegroup
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import Control.Arrow ((&&&))
-import qualified Control.Foldl as Foldl
-import qualified Data.Aeson as Json
+import           Control.Arrow        ((&&&))
+import qualified Control.Foldl        as Foldl
+import qualified Data.Aeson           as Json
 import qualified Data.ByteString.Lazy as LBS
-import Data.Either (partitionEithers)
-import qualified Data.List as List
-import qualified Data.Text as Txt
-import qualified Data.Text.IO as Txt
-import Data.Tree (Tree (Node))
-import Prelude hiding (FilePath)
+import           Data.Either          (partitionEithers)
+import qualified Data.List            as List
+import qualified Data.Text            as Txt
+import qualified Data.Text.IO         as Txt
+import           Data.Tree            (Tree (Node))
+import           Prelude              hiding (FilePath)
 import qualified TGF
 import qualified TGF.IO
-import Turtle
-import qualified Turtle.Pattern as Pattern
-import Util (filepathToString, filepathToText)
+import           Turtle
+import qualified Turtle.Pattern       as Pattern
+import           Util                 (filepathToString, filepathToText)
 
 
 main :: IO ()
