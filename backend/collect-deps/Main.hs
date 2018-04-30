@@ -1,57 +1,70 @@
+{-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main where
 
-import           Control.Foldl       (FoldM (FoldM))
+import           Control.Foldl                     (FoldM (FoldM))
 import           Control.Monad.State
-import           Data.IntMap         (IntMap, (!))
-import qualified Data.IntMap         as IntMap
-import           Data.List           (foldl')
-import           Data.Map            (Map)
-import qualified Data.Map            as Map
-import           Data.Set            (Set)
-import qualified Data.Set            as Set
-import           Data.Text           (Text)
-import           Data.Tuple          (swap)
-import           Prelude             hiding (FilePath)
-import           TGF                 (Coordinate, NodeId, TGF)
+import qualified Data.Graph.Inductive              as G
+import           Data.Graph.Inductive.PatriciaTree (Gr)
+import           Data.IntMap                       (IntMap, (!))
+import qualified Data.IntMap                       as IntMap
+import           Data.List                         (foldl')
+import           Data.Map                          (Map)
+import qualified Data.Map                          as Map
+import           Data.Set                          (Set)
+import qualified Data.Set                          as Set
+import           Data.Text                         (Text)
+import           Data.Tuple                        (swap)
+import           Prelude                           hiding (FilePath)
+import           TGF                               (Coordinate, NodeId, TGF)
 import qualified TGF
 import qualified TGF.IO
-import           Turtle              (FilePath, Shell, argPath, options)
+import           Turtle                            (FilePath, Shell, argPath,
+                                                    options)
 import qualified Turtle
-import qualified Turtle.Pattern      as Pattern
+import qualified Turtle.Pattern                    as Pattern
 
+{-| USAGE
+1) Generate dependency report file(s) for one or more maven projects
+$ mvn dependency:tree -DoutputType=tgf -DoutputFile=deps.tgf
+
+2) Run this tool to collect the data, providing path to directory where all maven projects are located as CLI arg
+$ stack exec collect-deps -- PATH/TO/COMMON/DIR
+-}
 main :: IO ()
 main = do
     kiegroupDir <- parseArgs
-    depTrees <- collectDeptTrees kiegroupDir
-    print depTrees
-
-    let cidToCoord = flipMap $ artifacts depTrees
-    print cidToCoord
+    depGraph <- constructDependencyGraph kiegroupDir
+    print depGraph
 
 {- Traverse kiegroup dir recursively looking for deps.tgf files.
-   Parse each file and add dependency info
+   Parse each file and add dependency info to global dependency graph
  -}
-collectDeptTrees :: FilePath -> IO DepTrees
-collectDeptTrees kiegroupDir = Turtle.foldIO (findDependencyReports kiegroupDir) foldDepTrees
+constructDependencyGraph :: FilePath -> IO DependencyGraph
+constructDependencyGraph kiegroupDir =
+    toGraph <$> collectDeptTrees kiegroupDir
 
+collectDeptTrees :: FilePath -> IO DepTrees
+collectDeptTrees kiegroupDir =
+    Turtle.foldIO (findDependencyReports kiegroupDir) foldDepTrees
 
 findDependencyReports :: FilePath -> Shell FilePath
-findDependencyReports = Turtle.find (Pattern.suffix "/deps.tgf")
+findDependencyReports =
+    Turtle.find (Pattern.suffix "/deps.tgf")
 
 parseArgs :: MonadIO io => io FilePath
 parseArgs =
     options "Dependency collector" $ argPath "KIEGROUP_DIR" "Directory containing all kiegroup repos"
 
-
 data DepTrees = DepTrees
-    { artifacts  :: Map Coordinate Int
-    , directDeps :: Set (Int, Int)
+    { coordinates :: Map Coordinate Int
+    , directDeps  :: Set (Int, Int, Text)
     } deriving Show
 
 foldDepTrees :: FoldM IO FilePath DepTrees
-foldDepTrees = FoldM step initial extract
+foldDepTrees =
+    FoldM step initial extract
   where
 
     step :: DepTrees -> FilePath -> IO DepTrees
@@ -62,7 +75,7 @@ foldDepTrees = FoldM step initial extract
 
     initial :: IO DepTrees
     initial = return DepTrees
-        { artifacts = Map.empty
+        { coordinates = Map.empty
         , directDeps = Set.empty
         }
 
@@ -72,26 +85,27 @@ foldDepTrees = FoldM step initial extract
 
 processTgf :: DepTrees -> TGF -> DepTrees
 processTgf depTrees tgf = DepTrees
-    { artifacts = newArtifacts
+    { coordinates = newCoordinates
     , directDeps = newDirectDeps
     }
   where
-    oldArtifacts = artifacts depTrees
+    oldArtifacts = coordinates depTrees
     oldDirectDeps = directDeps depTrees
 
     nodeDecls = TGF.nodeDeclarations tgf
     edgeDecls = TGF.edgeDeclarations tgf
 
-    -- Insert artifacts which we haven't seen
-    -- and accumulate map that maps from NodeIds used in the TGF file to Coordinate IDs
-    (newArtifacts, oldToNewIdMap) = foldl' fun (oldArtifacts, IntMap.empty) nodeDecls
+    -- Accumulator is pair of
+    --      ( global map of all known artifact coordinates to their IDs
+    --      , map of coord IDs local to processed TGF file to global IDs)
+    (newCoordinates, oldToNewIdMap) = foldl' addNode (oldArtifacts, IntMap.empty) nodeDecls
 
-    directDepsFromTgf = Set.fromList $ map (\(from, to, _label) -> (oldToNewIdMap ! from, oldToNewIdMap ! to)) edgeDecls
+    directDepsFromTgf = Set.fromList $ map (\(from, to, label) -> (oldToNewIdMap ! from, oldToNewIdMap ! to, label)) edgeDecls
 
     newDirectDeps = Set.union directDepsFromTgf oldDirectDeps
 
-    fun :: (Map Coordinate Int, IntMap Int) -> (NodeId, Text) -> (Map Coordinate Int, IntMap Int)
-    fun (arts, m) (tgfNodeId, txt) =
+    addNode :: (Map Coordinate Int, IntMap Int) -> (NodeId, Text) -> (Map Coordinate Int, IntMap Int)
+    addNode (arts, m) (tgfNodeId, txt) =
       let coord = either error id $ TGF.readCoordinate txt
           (arts', coordId) = case Map.lookup coord arts of
               Nothing  -> let newCid = Map.size arts in (Map.insert coord newCid arts, newCid)
@@ -99,5 +113,10 @@ processTgf depTrees tgf = DepTrees
           m' = IntMap.insert tgfNodeId coordId m
       in (arts', m')
 
-flipMap :: Map Coordinate Int -> IntMap Coordinate
-flipMap = IntMap.fromList . fmap swap .  Map.assocs
+type DependencyGraph = Gr Coordinate Text --TODO replace Text with Scope
+
+toGraph :: DepTrees -> DependencyGraph
+toGraph DepTrees{coordinates, directDeps} = G.mkGraph nodes edges
+  where
+    nodes = swap <$> Map.assocs coordinates
+    edges = Set.toList directDeps

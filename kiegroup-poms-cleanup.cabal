@@ -53,6 +53,7 @@ executable collect-deps
     main-is: Main.hs
     build-depends:
         base -any,
+        fgl -any,
         foldl -any,
         kiegroup-poms-cleanup -any,
         mtl -any,
