@@ -1,4 +1,4 @@
 .stack-work
 dist
-
+dependency-graph.json
 elm-stuff

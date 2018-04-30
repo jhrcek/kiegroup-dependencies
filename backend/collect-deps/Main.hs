@@ -140,4 +140,4 @@ instance ToJSON DependencyGraph where
         edges = G.labEdges graph
 
 outputFile :: String
-outputFile = "depdency-graph.json"
+outputFile = "dependency-graph.json"
