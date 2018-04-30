@@ -1,10 +1,10 @@
 module Main exposing (main)
 
-import Data.Coordinate as Coordinate exposing (Coordinate)
 import Data.DependencyGraph as DG exposing (DependencyGraph)
 import Html exposing (Html, text)
 import Http
 import RemoteData exposing (RemoteData(..), WebData)
+import Table
 import View.DependencyGraph as DG
 
 
@@ -19,11 +19,14 @@ main =
 
 
 type alias Model =
-    { dependencyGraph : WebData DependencyGraph }
+    { dependencyGraph : WebData DependencyGraph
+    , tableState : Table.State
+    }
 
 
 type Msg
     = DependencyGraphLoaded (WebData DependencyGraph)
+    | TableMsg Table.State
 
 
 loadDependencyGraph : Cmd Msg
@@ -35,14 +38,26 @@ loadDependencyGraph =
 
 init : ( Model, Cmd Msg )
 init =
-    ( { dependencyGraph = RemoteData.Loading }, loadDependencyGraph )
+    ( { dependencyGraph = RemoteData.Loading
+      , tableState = Table.initialSort "ArtifactId"
+      }
+    , loadDependencyGraph
+    )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    ( updatePure msg model, Cmd.none )
+
+
+updatePure : Msg -> Model -> Model
+updatePure msg model =
     case msg of
-        DependencyGraphLoaded dg ->
-            ( { model | dependencyGraph = dg }, Cmd.none )
+        DependencyGraphLoaded newDependencyGraph ->
+            { model | dependencyGraph = newDependencyGraph }
+
+        TableMsg newState ->
+            { model | tableState = newState }
 
 
 view : Model -> Html Msg
@@ -58,4 +73,4 @@ view model =
             text <| toString e
 
         Success graph ->
-            DG.view graph
+            DG.view TableMsg model.tableState (DG.getCoordinateList graph)

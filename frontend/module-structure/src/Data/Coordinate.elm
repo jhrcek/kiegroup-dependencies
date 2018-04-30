@@ -7,7 +7,7 @@ type alias Coordinate =
     { groupId : String
     , artifactId : String
     , packaging : String
-    , qualified : Maybe String
+    , qualifier : Maybe String
     , version : String
     }
 
