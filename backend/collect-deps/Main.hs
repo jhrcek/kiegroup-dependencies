@@ -1,10 +1,14 @@
 {-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
 
+
 module Main where
 
 import           Control.Foldl                     (FoldM (FoldM))
 import           Control.Monad.State
+import           Data.Aeson                        (ToJSON, encode, object,
+                                                    toJSON, (.=))
+import qualified Data.ByteString.Lazy              as BS
 import qualified Data.Graph.Inductive              as G
 import           Data.Graph.Inductive.PatriciaTree (Gr)
 import           Data.IntMap                       (IntMap, (!))
@@ -35,8 +39,9 @@ $ stack exec collect-deps -- PATH/TO/COMMON/DIR
 main :: IO ()
 main = do
     kiegroupDir <- parseArgs
-    depGraph <- constructDependencyGraph kiegroupDir
-    print depGraph
+    dependencyGraph <- constructDependencyGraph kiegroupDir
+    BS.writeFile outputFile $ encode dependencyGraph
+    putStrLn $ "Dependency graph written to " ++ outputFile
 
 {- Traverse kiegroup dir recursively looking for deps.tgf files.
    Parse each file and add dependency info to global dependency graph
@@ -113,10 +118,26 @@ processTgf depTrees tgf = DepTrees
           m' = IntMap.insert tgfNodeId coordId m
       in (arts', m')
 
-type DependencyGraph = Gr Coordinate Text --TODO replace Text with Scope
+--TODO replace Text with Scope
+newtype DependencyGraph =
+    DependencyGraph (Gr Coordinate Text)
+    deriving (Show)
 
 toGraph :: DepTrees -> DependencyGraph
-toGraph DepTrees{coordinates, directDeps} = G.mkGraph nodes edges
+toGraph DepTrees{coordinates, directDeps} =
+    DependencyGraph $ G.mkGraph nodes edges
   where
     nodes = swap <$> Map.assocs coordinates
     edges = Set.toList directDeps
+
+instance ToJSON DependencyGraph where
+    toJSON (DependencyGraph graph) = object
+        [ "nodes" .= nodes
+        , "edges" .= edges
+        ]
+      where
+        nodes = G.labNodes graph
+        edges = G.labEdges graph
+
+outputFile :: String
+outputFile = "depdency-graph.json"

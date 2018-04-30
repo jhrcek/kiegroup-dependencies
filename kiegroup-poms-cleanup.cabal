@@ -52,7 +52,9 @@ executable module-structure
 executable collect-deps
     main-is: Main.hs
     build-depends:
+        aeson -any,
         base -any,
+        bytestring -any,
         fgl -any,
         foldl -any,
         kiegroup-poms-cleanup -any,
