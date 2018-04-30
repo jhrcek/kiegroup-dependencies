@@ -126,10 +126,11 @@ data Coordinate = Coordinate
     } deriving (Eq, Ord)
 
 instance ToJSON Coordinate where
-    toJSON (Coordinate groupId artifactId packaging _qualifier version) =
+    toJSON (Coordinate groupId artifactId packaging qualifier version) =
         object [ "grp" .= groupId
                , "art" .= artifactId
                , "pkg" .= packaging
+               , "qua" .= qualifier
                , "ver" .= version
                ]
 
