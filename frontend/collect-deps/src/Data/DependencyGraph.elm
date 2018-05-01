@@ -1,7 +1,13 @@
-module Data.DependencyGraph exposing (DependencyGraph, decoder, getCoordinateList)
+module Data.DependencyGraph
+    exposing
+        ( DependencyContext
+        , DependencyGraph
+        , decoder
+        , getCoordinateNodes
+        )
 
 import Data.Coordinate as Coord exposing (Coordinate)
-import Graph exposing (Edge, Graph, Node)
+import Graph exposing (Edge, Graph, Node, NodeContext)
 import Json.Decode as Decode exposing (Decoder)
 
 
@@ -9,9 +15,13 @@ type alias DependencyGraph =
     Graph Coordinate String
 
 
-getCoordinateList : DependencyGraph -> List Coordinate
-getCoordinateList dependencyGraph =
-    Graph.nodes dependencyGraph |> List.map .label
+type alias DependencyContext =
+    NodeContext Coordinate String
+
+
+getCoordinateNodes : DependencyGraph -> List (Node Coordinate)
+getCoordinateNodes =
+    Graph.nodes
 
 
 

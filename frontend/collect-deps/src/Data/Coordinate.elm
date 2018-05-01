@@ -1,4 +1,4 @@
-module Data.Coordinate exposing (Coordinate, decoder)
+module Data.Coordinate exposing (Coordinate, decoder, toString)
 
 import Json.Decode as Decode exposing (Decoder, field, nullable, string)
 
@@ -20,3 +20,17 @@ decoder =
         (field "pkg" string)
         (field "qua" (nullable string))
         (field "ver" string)
+
+
+toString : Coordinate -> String
+toString c =
+    let
+        fields =
+            case c.qualifier of
+                Nothing ->
+                    [ c.groupId, c.artifactId, c.packaging, c.version ]
+
+                Just qualifier ->
+                    [ c.groupId, c.artifactId, c.packaging, qualifier, c.version ]
+    in
+    String.join ":" fields
