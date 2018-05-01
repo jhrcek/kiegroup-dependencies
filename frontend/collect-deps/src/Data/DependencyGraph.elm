@@ -2,12 +2,14 @@ module Data.DependencyGraph
     exposing
         ( DependencyContext
         , DependencyGraph
+        , convertTree
         , decoder
-        , getCoordinateNodes
         )
 
 import Data.Coordinate as Coord exposing (Coordinate)
+import Data.Tree.Drawer as TD
 import Graph exposing (Edge, Graph, Node, NodeContext)
+import Graph.Tree as Tree
 import Json.Decode as Decode exposing (Decoder)
 
 
@@ -19,9 +21,14 @@ type alias DependencyContext =
     NodeContext Coordinate String
 
 
-getCoordinateNodes : DependencyGraph -> List (Node Coordinate)
-getCoordinateNodes =
-    Graph.nodes
+convertTree : Tree.Tree DependencyContext -> TD.Tree String
+convertTree t =
+    case Tree.root t of
+        Nothing ->
+            TD.Node "EMPTY" []
+
+        Just ( ctx, children ) ->
+            TD.Node (Coord.toString ctx.node.label) (List.map convertTree children)
 
 
 

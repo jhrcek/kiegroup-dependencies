@@ -2,10 +2,11 @@ module Main exposing (main)
 
 import Data.Coordinate as Coord exposing (Coordinate)
 import Data.DependencyGraph as DG exposing (DependencyContext, DependencyGraph)
-import Graph as G exposing (Adjacency, Node, NodeId)
+import Data.Tree.Drawer as TreeDrawer
+import Graph exposing (Adjacency, Node, NodeId)
 import Graph.Tree as Tree
-import Html exposing (Html, a, div, h1, h2, li, table, td, text, tr, ul)
-import Html.Attributes exposing (href)
+import Html exposing (Html, a, div, h1, h2, li, pre, span, text, ul)
+import Html.Attributes exposing (href, style)
 import Html.Events exposing (onClick)
 import Http
 import IntDict
@@ -102,11 +103,11 @@ viewPage model graph =
                     SortTable
                     (PageChange << DependencyDetails)
                     model.tableState
-                    (DG.getCoordinateNodes graph)
+                    (Graph.nodes graph)
                 ]
 
         DependencyDetails nodeId ->
-            case G.get nodeId graph of
+            case Graph.get nodeId graph of
                 Nothing ->
                     text <| "There is no node with nodeId " ++ toString nodeId
 
@@ -125,31 +126,34 @@ viewDependencyDetails ctx graph =
 
         out =
             ctx.outgoing
+
+        depTree =
+            Graph.dfsTree ctx.node.id graph
+
+        additionalInfo data =
+            span [ style [ ( "font-size", "16px" ) ] ] [ text <| " (" ++ toString data ++ ")" ]
     in
     div []
         [ h1 [] [ text (Coord.toString coordinate) ]
-        , table []
-            [ tr []
-                [ td [] [ text "Direct dependencies" ]
-                , td [] [ text <| toString <| IntDict.size out ]
-                ]
-            , tr []
-                [ td [] [ text "Transitive dependencies" ]
-                , td [] [ text <| toString <| Tree.size <| G.dfsTree ctx.node.id graph ]
-                ]
-            , tr []
-                [ td [] [ text "Direct dependees" ]
-                , td [] [ text <| toString <| IntDict.size inc ]
-                ]
-            , tr []
-                [ td [] [ text "Transitive dependees" ]
-                , td [] [ text <| toString <| Tree.size <| G.dfsTree ctx.node.id <| G.reverseEdges graph ]
-                ]
+        , h2 []
+            [ text "Direct dependencies"
+            , additionalInfo (IntDict.size out)
             ]
-        , h2 [] [ text "Direct dependencies" ]
         , viewAdjacentCoordinates out graph
-        , h2 [] [ text "Direct dependees" ]
+        , h2 []
+            [ text "Dependency tree"
+            , additionalInfo (Tree.size depTree)
+            ]
+        , pre [] [ text <| TreeDrawer.draw <| DG.convertTree depTree ]
+        , h2 []
+            [ text "Direct users of this artifact"
+            , additionalInfo (IntDict.size inc)
+            ]
         , viewAdjacentCoordinates inc graph
+        , h2 []
+            [ text "Transitive users of this artifact"
+            , additionalInfo (Tree.size <| Graph.dfsTree ctx.node.id <| Graph.reverseEdges graph)
+            ]
         , a [ href "#", onClick (PageChange Summary) ] [ text "Back to summary" ]
         ]
 
@@ -159,7 +163,7 @@ viewAdjacentCoordinates adj graph =
     IntDict.toList adj
         |> List.filterMap
             (\( nid, _ {- <- TODO use scope -} ) ->
-                G.get nid graph
+                Graph.get nid graph
                     |> Maybe.map (\adjCtx -> viewCoord adjCtx.node)
             )
         |> ul []
