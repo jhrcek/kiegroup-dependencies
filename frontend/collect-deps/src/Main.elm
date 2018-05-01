@@ -154,8 +154,21 @@ viewDependencyDetails ctx graph =
             [ text "Transitive users of this artifact"
             , additionalInfo (Tree.size <| Graph.dfsTree ctx.node.id <| Graph.reverseEdges graph)
             ]
+        , mavenCentralLink coordinate
         , a [ href "#", onClick (PageChange Summary) ] [ text "Back to summary" ]
         ]
+
+
+mavenCentralLink : Coordinate -> Html a
+mavenCentralLink coordinate =
+    let
+        url =
+            String.join "/" [ "https://mvnrepository.com/artifact", coordinate.groupId, coordinate.artifactId, coordinate.version ]
+    in
+    if String.endsWith "SNAPSHOT" coordinate.version then
+        text "Maven central link not available for SNAPSHOT artifacts"
+    else
+        a [ href url ] [ text "Maven central" ]
 
 
 viewAdjacentCoordinates : Adjacency String -> DependencyGraph -> Html Msg
