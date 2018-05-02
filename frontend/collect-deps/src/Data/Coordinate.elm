@@ -1,6 +1,7 @@
 module Data.Coordinate exposing (Coordinate, decoder, toString)
 
-import Json.Decode as Decode exposing (Decoder, field, nullable, string)
+import Json.Decode as Decode exposing (Decoder, string)
+import Json.Decode.Pipeline exposing (decode, optional, required)
 
 
 type alias Coordinate =
@@ -14,12 +15,12 @@ type alias Coordinate =
 
 decoder : Decoder Coordinate
 decoder =
-    Decode.map5 Coordinate
-        (field "grp" string)
-        (field "art" string)
-        (field "pkg" string)
-        (field "qua" (nullable string))
-        (field "ver" string)
+    decode Coordinate
+        |> required "grp" string
+        |> required "art" string
+        |> required "pkg" string
+        |> optional "qua" (Decode.map Just string) Nothing
+        |> required "ver" string
 
 
 toString : Coordinate -> String

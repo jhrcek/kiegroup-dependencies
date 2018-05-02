@@ -126,13 +126,16 @@ data Coordinate = Coordinate
     } deriving (Eq, Ord)
 
 instance ToJSON Coordinate where
-    toJSON (Coordinate groupId artifactId packaging qualifier version) =
-        object [ "grp" .= groupId
-               , "art" .= artifactId
-               , "pkg" .= packaging
-               , "qua" .= qualifier
-               , "ver" .= version
-               ]
+    toJSON (Coordinate groupId artifactId packaging mayQualifier version) = object $
+        [ "grp" .= groupId
+        , "art" .= artifactId
+        , "pkg" .= packaging
+        , "ver" .= version
+        ] ++ quaField
+      where
+        quaField = case mayQualifier of
+            Nothing        -> []
+            Just qualifier -> ["qua" .= qualifier]
 
 instance Show Coordinate where
     show (Coordinate grp art pac mayQualifier ver) =
