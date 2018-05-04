@@ -16,11 +16,11 @@ type alias Coordinate =
 decoder : Decoder Coordinate
 decoder =
     decode Coordinate
-        |> required "grp" string
-        |> required "art" string
-        |> required "pkg" string
-        |> optional "qua" (Decode.map Just string) Nothing
-        |> required "ver" string
+        |> required "gr" string
+        |> required "ar" string
+        |> required "pa" string
+        |> optional "qu" (Decode.map Just string) Nothing
+        |> required "ve" string
 
 
 toString : Coordinate -> String

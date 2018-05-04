@@ -13,4 +13,25 @@ type Scope
 
 decoder : Decoder Scope
 decoder =
-    Decode.oneOf []
+    Decode.string
+        |> Decode.andThen
+            (\str ->
+                case str of
+                    "c" ->
+                        Decode.succeed Compile
+
+                    "p" ->
+                        Decode.succeed Provided
+
+                    "r" ->
+                        Decode.succeed Runtime
+
+                    "s" ->
+                        Decode.succeed System
+
+                    "t" ->
+                        Decode.succeed Test
+
+                    other ->
+                        Decode.fail <| "Unrecognized scope " ++ other
+            )

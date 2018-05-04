@@ -128,6 +128,9 @@ knownPackagings = Set.fromList
     ]
 
 $(deriveJSON defaultOptions{ fieldLabelModifier = map toLower . take 2 . drop 1
-                           , omitNothingFields = True} ''Coordinate)
+                           , omitNothingFields = True
+                           } ''Coordinate)
 
-$(deriveJSON defaultOptions{ fieldLabelModifier = map toLower} ''Scope)
+$(deriveJSON defaultOptions{ fieldLabelModifier = map toLower
+                            , constructorTagModifier = \t -> [toLower (head t)]
+                            } ''Scope)

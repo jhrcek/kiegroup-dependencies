@@ -2,6 +2,7 @@ module Main exposing (main)
 
 import Data.Coordinate as Coord exposing (Coordinate)
 import Data.DependencyGraph as DG exposing (DependencyContext, DependencyGraph)
+import Data.Scope exposing (Scope)
 import Data.Tree.Drawer as TreeDrawer
 import Graph exposing (Adjacency, Node, NodeId)
 import Graph.Tree as Tree
@@ -171,7 +172,7 @@ mavenCentralLink coordinate =
         a [ href url ] [ text "Maven central" ]
 
 
-viewAdjacentCoordinates : Adjacency String -> DependencyGraph -> Html Msg
+viewAdjacentCoordinates : Adjacency Scope -> DependencyGraph -> Html Msg
 viewAdjacentCoordinates adj graph =
     IntDict.toList adj
         |> List.filterMap

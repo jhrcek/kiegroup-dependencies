@@ -7,6 +7,7 @@ module Data.DependencyGraph
         )
 
 import Data.Coordinate as Coord exposing (Coordinate)
+import Data.Scope as Scope exposing (Scope)
 import Data.Tree.Drawer as TD
 import Graph exposing (Edge, Graph, Node, NodeContext)
 import Graph.Tree as Tree
@@ -14,11 +15,11 @@ import Json.Decode as Decode exposing (Decoder)
 
 
 type alias DependencyGraph =
-    Graph Coordinate String
+    Graph Coordinate Scope
 
 
 type alias DependencyContext =
-    NodeContext Coordinate String
+    NodeContext Coordinate Scope
 
 
 convertTree : Tree.Tree DependencyContext -> TD.Tree String
@@ -42,12 +43,12 @@ decoder =
         (Decode.field "edges" (Decode.list edgeDecoder))
 
 
-edgeDecoder : Decoder (Edge String)
+edgeDecoder : Decoder (Edge Scope)
 edgeDecoder =
     Decode.map3 Edge
         (Decode.index 0 Decode.int)
         (Decode.index 1 Decode.int)
-        (Decode.index 2 Decode.string)
+        (Decode.index 2 Scope.decoder)
 
 
 nodeDecoder : Decoder (Node Coordinate)
