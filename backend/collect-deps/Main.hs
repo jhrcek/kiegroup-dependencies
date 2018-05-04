@@ -1,7 +1,6 @@
 {-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-
 module Main where
 
 import           Control.Foldl                     (FoldM (FoldM))
@@ -9,7 +8,7 @@ import           Control.Monad.State
 import           Data.Aeson                        (ToJSON, encode, object,
                                                     toJSON, (.=))
 import qualified Data.ByteString.Lazy              as BS
-import qualified Data.Graph.Inductive              as G
+import qualified Data.Graph.Inductive              as Graph
 import           Data.Graph.Inductive.PatriciaTree (Gr)
 import           Data.IntMap                       (IntMap, (!))
 import qualified Data.IntMap                       as IntMap
@@ -18,10 +17,10 @@ import           Data.Map                          (Map)
 import qualified Data.Map                          as Map
 import           Data.Set                          (Set)
 import qualified Data.Set                          as Set
-import           Data.Text                         (Text)
 import           Data.Tuple                        (swap)
 import           Prelude                           hiding (FilePath)
-import           TGF                               (Coordinate, NodeId, TGF)
+import           TGF                               (Coordinate, Scope,
+                                                    TgfDepGraph)
 import qualified TGF
 import qualified TGF.IO
 import           Turtle                            (FilePath, Shell, argPath,
@@ -50,7 +49,7 @@ constructDependencyGraph :: FilePath -> IO DependencyGraph
 constructDependencyGraph kiegroupDir =
     toGraph <$> collectDeptTrees kiegroupDir
 
-collectDeptTrees :: FilePath -> IO DepTrees
+collectDeptTrees :: FilePath -> IO DepGraphAcc
 collectDeptTrees kiegroupDir =
     Turtle.foldIO (findDependencyReports kiegroupDir) foldDepTrees
 
@@ -62,34 +61,36 @@ parseArgs :: MonadIO io => io FilePath
 parseArgs =
     options "Dependency collector" $ argPath "KIEGROUP_DIR" "Directory containing all kiegroup repos"
 
-data DepTrees = DepTrees
+-- Serves as an intermediate accumulator to merge all dependency trees fro individual deps.tgf files
+-- After merging of each dep. tree it's converted to DependencyGraph
+data DepGraphAcc = DepGraphAcc
     { coordinates :: Map Coordinate Int
-    , directDeps  :: Set (Int, Int, Text)
+    , directDeps  :: Set (Int, Int, Scope)
     } deriving Show
 
-foldDepTrees :: FoldM IO FilePath DepTrees
+foldDepTrees :: FoldM IO FilePath DepGraphAcc
 foldDepTrees =
     FoldM step initial extract
   where
 
-    step :: DepTrees -> FilePath -> IO DepTrees
+    step :: DepGraphAcc -> FilePath -> IO DepGraphAcc
     step depTrees depsFile = do
-        eitherErrTgf <- TGF.IO.loadTgfFromFile depsFile
+        eitherErrTgf <- TGF.IO.loadDependencyTree depsFile
         let tgf = either error id eitherErrTgf
         return $ processTgf depTrees tgf
 
-    initial :: IO DepTrees
-    initial = return DepTrees
+    initial :: IO DepGraphAcc
+    initial = return DepGraphAcc
         { coordinates = Map.empty
         , directDeps = Set.empty
         }
 
-    extract :: DepTrees -> IO DepTrees
+    extract :: DepGraphAcc -> IO DepGraphAcc
     extract = return
 
 
-processTgf :: DepTrees -> TGF -> DepTrees
-processTgf depTrees tgf = DepTrees
+processTgf :: DepGraphAcc -> TgfDepGraph -> DepGraphAcc
+processTgf depTrees tgf = DepGraphAcc
     { coordinates = newCoordinates
     , directDeps = newDirectDeps
     }
@@ -109,23 +110,21 @@ processTgf depTrees tgf = DepTrees
 
     newDirectDeps = Set.union directDepsFromTgf oldDirectDeps
 
-    addNode :: (Map Coordinate Int, IntMap Int) -> (NodeId, Text) -> (Map Coordinate Int, IntMap Int)
-    addNode (arts, m) (tgfNodeId, txt) =
-      let coord = either error id $ TGF.readCoordinate txt
-          (arts', coordId) = case Map.lookup coord arts of
+    addNode :: (Map Coordinate Int, IntMap Int) -> (Graph.Node, Coordinate) -> (Map Coordinate Int, IntMap Int)
+    addNode (arts, m) (tgfNodeId, coord) =
+      let (arts', coordId) = case Map.lookup coord arts of
               Nothing  -> let newCid = Map.size arts in (Map.insert coord newCid arts, newCid)
               Just cid -> (arts, cid)
           m' = IntMap.insert tgfNodeId coordId m
       in (arts', m')
 
---TODO replace Text with Scope
 newtype DependencyGraph =
-    DependencyGraph (Gr Coordinate Text)
+    DependencyGraph (Gr Coordinate Scope)
     deriving (Show)
 
-toGraph :: DepTrees -> DependencyGraph
-toGraph DepTrees{coordinates, directDeps} =
-    DependencyGraph $ G.mkGraph nodes edges
+toGraph :: DepGraphAcc -> DependencyGraph
+toGraph DepGraphAcc{coordinates, directDeps} =
+    DependencyGraph $ Graph.mkGraph nodes edges
   where
     nodes = swap <$> Map.assocs coordinates
     edges = Set.toList directDeps
@@ -136,8 +135,8 @@ instance ToJSON DependencyGraph where
         , "edges" .= edges
         ]
       where
-        nodes = G.labNodes graph
-        edges = G.labEdges graph
+        nodes = Graph.labNodes graph
+        edges = Graph.labEdges graph
 
 outputFile :: String
 outputFile = "dependency-graph.json"
