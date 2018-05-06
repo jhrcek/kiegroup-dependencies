@@ -12,6 +12,7 @@ import Data.Tree.Drawer as TD
 import Graph exposing (Edge, Graph, Node, NodeContext)
 import Graph.Tree as Tree
 import Json.Decode as Decode exposing (Decoder)
+import Set exposing (Set)
 
 
 type alias DependencyGraph =
@@ -29,7 +30,9 @@ convertTree t =
             TD.Node "EMPTY" []
 
         Just ( ctx, children ) ->
-            TD.Node (Coord.toString ctx.node.label) (List.map convertTree children)
+            TD.Node
+                (Coord.toString ctx.node.label)
+                (List.map convertTree children)
 
 
 
@@ -38,9 +41,19 @@ convertTree t =
 
 decoder : Decoder DependencyGraph
 decoder =
-    Decode.map2 Graph.fromNodesAndEdges
-        (Decode.field "nodes" (Decode.list nodeDecoder))
-        (Decode.field "edges" (Decode.list edgeDecoder))
+    ourCoordinateIdsDecoder
+        |> Decode.andThen
+            (\ourCoordinateIds ->
+                Decode.map2 Graph.fromNodesAndEdges
+                    (Decode.field "nodes" (Decode.list (nodeDecoder ourCoordinateIds)))
+                    (Decode.field "edges" (Decode.list edgeDecoder))
+            )
+
+
+ourCoordinateIdsDecoder : Decoder (Set Int)
+ourCoordinateIdsDecoder =
+    Decode.field "ourCoordinateIds" (Decode.list Decode.int)
+        |> Decode.map Set.fromList
 
 
 edgeDecoder : Decoder (Edge Scope)
@@ -51,8 +64,16 @@ edgeDecoder =
         (Decode.index 2 Scope.decoder)
 
 
-nodeDecoder : Decoder (Node Coordinate)
-nodeDecoder =
-    Decode.map2 Node
-        (Decode.index 0 Decode.int)
-        (Decode.index 1 Coord.decoder)
+nodeDecoder : Set Int -> Decoder (Node Coordinate)
+nodeDecoder ourCoordinateIds =
+    Decode.index 0 Decode.int
+        |> Decode.andThen
+            (\coordinateId ->
+                let
+                    is3rdParty =
+                        not <| Set.member coordinateId ourCoordinateIds
+                in
+                Decode.map
+                    (Node coordinateId)
+                    (Decode.index 1 (Coord.decoder is3rdParty))
+            )

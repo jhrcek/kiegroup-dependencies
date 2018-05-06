@@ -10,12 +10,13 @@ type alias Coordinate =
     , packaging : String
     , qualifier : Maybe String
     , version : String
+    , is3rdParty : Bool
     }
 
 
-decoder : Decoder Coordinate
-decoder =
-    decode Coordinate
+decoder : Bool -> Decoder Coordinate
+decoder is3rdParty =
+    decode (\g a p q v -> Coordinate g a p q v is3rdParty)
         |> required "gr" string
         |> required "ar" string
         |> required "pa" string

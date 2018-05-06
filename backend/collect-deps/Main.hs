@@ -64,8 +64,10 @@ parseArgs =
 -- Serves as an intermediate accumulator to merge all dependency trees fro individual deps.tgf files
 -- After merging of each dep. tree it's converted to DependencyGraph
 data DepGraphAcc = DepGraphAcc
-    { coordinates :: Map Coordinate Int
-    , directDeps  :: Set (Int, Int, Scope)
+    { coordinates    :: Map Coordinate Int
+    , directDeps     :: Set (Int, Int, Scope)
+    {- Set of Coordinates take from each dependency tree. These are sure to be "our" (as opposed to 3rd party) -}
+    , ourCoordinates :: Set Coordinate
     } deriving Show
 
 foldDepTrees :: FoldM IO FilePath DepGraphAcc
@@ -74,15 +76,16 @@ foldDepTrees =
   where
 
     step :: DepGraphAcc -> FilePath -> IO DepGraphAcc
-    step depTrees depsFile = do
+    step acc depsFile = do
         eitherErrTgf <- TGF.IO.loadDependencyTree depsFile
         let tgf = either error id eitherErrTgf
-        return $ processTgf depTrees tgf
+        return $ processTgf acc tgf
 
     initial :: IO DepGraphAcc
     initial = return DepGraphAcc
         { coordinates = Map.empty
         , directDeps = Set.empty
+        , ourCoordinates = Set.empty
         }
 
     extract :: DepGraphAcc -> IO DepGraphAcc
@@ -90,13 +93,15 @@ foldDepTrees =
 
 
 processTgf :: DepGraphAcc -> TgfDepGraph -> DepGraphAcc
-processTgf depTrees tgf = DepGraphAcc
+processTgf acc tgf = DepGraphAcc
     { coordinates = newCoordinates
     , directDeps = newDirectDeps
+    , ourCoordinates = newOurCoordinates
     }
   where
-    oldArtifacts = coordinates depTrees
-    oldDirectDeps = directDeps depTrees
+    oldArtifacts = coordinates acc
+    oldDirectDeps = directDeps acc
+    oldOurCoorinates = ourCoordinates acc
 
     nodeDecls = TGF.nodeDeclarations tgf
     edgeDecls = TGF.edgeDeclarations tgf
@@ -110,6 +115,10 @@ processTgf depTrees tgf = DepGraphAcc
 
     newDirectDeps = Set.union directDepsFromTgf oldDirectDeps
 
+    newOurCoordinates =
+        let firstCoordinate = snd (head nodeDecls)
+        in Set.insert firstCoordinate oldOurCoorinates
+
     addNode :: (Map Coordinate Int, IntMap Int) -> (Graph.Node, Coordinate) -> (Map Coordinate Int, IntMap Int)
     addNode (arts, m) (tgfNodeId, coord) =
       let (arts', coordId) = case Map.lookup coord arts of
@@ -118,21 +127,25 @@ processTgf depTrees tgf = DepGraphAcc
           m' = IntMap.insert tgfNodeId coordId m
       in (arts', m')
 
-newtype DependencyGraph =
-    DependencyGraph (Gr Coordinate Scope)
-    deriving (Show)
+data DependencyGraph = DependencyGraph
+    { dependencyGraph  :: Gr Coordinate Scope
+    , ourCoordinateIds :: [Int]
+    } deriving (Show)
 
 toGraph :: DepGraphAcc -> DependencyGraph
-toGraph DepGraphAcc{coordinates, directDeps} =
-    DependencyGraph $ Graph.mkGraph nodes edges
+toGraph DepGraphAcc{coordinates, directDeps, ourCoordinates} = DependencyGraph
+    { dependencyGraph = Graph.mkGraph nodes edges
+    , ourCoordinateIds = (coordinates Map.!) <$> Set.toList ourCoordinates
+    }
   where
     nodes = swap <$> Map.assocs coordinates
     edges = Set.toList directDeps
 
 instance ToJSON DependencyGraph where
-    toJSON (DependencyGraph graph) = object
+    toJSON (DependencyGraph graph ourCoordinateIds) = object
         [ "nodes" .= nodes
         , "edges" .= edges
+        , "ourCoordinateIds" .= ourCoordinateIds
         ]
       where
         nodes = Graph.labNodes graph

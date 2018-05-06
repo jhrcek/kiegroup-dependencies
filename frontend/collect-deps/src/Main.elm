@@ -185,7 +185,15 @@ viewAdjacentCoordinates adj graph =
 
 viewCoord : Node Coordinate -> Html Msg
 viewCoord node =
+    let
+        highlightOur =
+            if node.label.is3rdParty then
+                []
+            else
+                [ DG.ourArtifactStyle ]
+    in
     li []
-        [ a [ href "#", onClick (PageChange <| DependencyDetails node.id) ]
+        [ a
+            ([ href "#", onClick (PageChange <| DependencyDetails node.id) ] ++ highlightOur)
             [ text <| Coord.toString node.label ]
         ]

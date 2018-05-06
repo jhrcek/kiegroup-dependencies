@@ -11,17 +11,17 @@ module TGF
     ) where
 
 import           Data.Aeson.TH
-import           Data.Attoparsec.Text       (Parser, char, choice, decimal,
-                                             endOfInput, endOfLine, isEndOfLine,
-                                             parseOnly, sepBy, skipMany, space,
-                                             string, takeTill, takeWhile, (<?>))
-import           Data.Char                  (isDigit, toLower)
-import           Data.Functor               (($>))
-import           Data.Set                   (Set)
-import qualified Data.Set                   as Set
-import           Data.Text                  (Text)
-import qualified Data.Text                  as Txt
-import           Prelude                    hiding (takeWhile)
+import           Data.Attoparsec.Text (Parser, char, choice, decimal,
+                                       endOfInput, endOfLine, isEndOfLine,
+                                       parseOnly, sepBy, skipMany, space,
+                                       string, takeTill, takeWhile, (<?>))
+import           Data.Char            (isDigit, toLower)
+import           Data.Functor         (($>))
+import           Data.Set             (Set)
+import qualified Data.Set             as Set
+import           Data.Text            (Text)
+import qualified Data.Text            as Txt
+import           Prelude              hiding (takeWhile)
 
 data Tgf n e = Tgf
     { nodeDeclarations :: [(Int, n)]
