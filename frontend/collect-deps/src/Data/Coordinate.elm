@@ -10,17 +10,41 @@ type alias Coordinate =
     , packaging : String
     , qualifier : Maybe String
     , version : String
+    , isOur : Bool
     }
 
 
 decoder : Decoder Coordinate
 decoder =
-    decode Coordinate
-        |> required "gr" string
-        |> required "ar" string
-        |> required "pa" string
-        |> optional "qu" (Decode.map Just string) Nothing
-        |> required "ve" string
+    Decode.field "gr" string
+        |> Decode.andThen
+            (\groupId ->
+                let
+                    isOur =
+                        isOurGroupId groupId
+                in
+                decode (\a p q v -> Coordinate groupId a p q v isOur)
+                    |> required "ar" string
+                    |> required "pa" string
+                    |> optional "qu" (Decode.map Just string) Nothing
+                    |> required "ve" string
+            )
+
+
+isOurGroupId : String -> Bool
+isOurGroupId testedGroupId =
+    List.any (\ourGroupId -> String.startsWith ourGroupId testedGroupId) ourGroupIds
+
+
+ourGroupIds : List String
+ourGroupIds =
+    [ "org.kie"
+    , "org.drools"
+    , "org.jbpm"
+    , "org.uberfire"
+    , "org.dashbuilder"
+    , "org.optaplanner"
+    ]
 
 
 toString : Coordinate -> String
