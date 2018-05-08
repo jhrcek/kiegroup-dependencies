@@ -2,13 +2,14 @@ module Main exposing (main)
 
 import Data.Coordinate as Coord exposing (Coordinate)
 import Data.DependencyGraph as DG exposing (DependencyContext, DependencyGraph)
-import Graph exposing (NodeId)
+import Graph
 import Graph.Tree as Tree
 import Html exposing (Html, a, div, h1, h2, li, span, text, ul)
 import Html.Attributes exposing (href, style)
-import Html.Events exposing (onClick)
 import Http
 import IntDict
+import Navigation
+import Page exposing (Page(..))
 import RemoteData exposing (RemoteData(..), WebData)
 import Table
 import View.DependencyGraph as DG
@@ -16,7 +17,7 @@ import View.DependencyGraph as DG
 
 main : Program Never Model Msg
 main =
-    Html.program
+    Navigation.program LocationChanged
         { init = init
         , update = update
         , view = view
@@ -31,15 +32,10 @@ type alias Model =
     }
 
 
-type Page
-    = Home
-    | DependencyDetails NodeId
-
-
 type Msg
     = DependencyGraphLoaded (WebData DependencyGraph)
     | SortTable Table.State
-    | PageChange Page
+    | LocationChanged Navigation.Location
 
 
 loadDependencyGraph : Cmd Msg
@@ -49,11 +45,11 @@ loadDependencyGraph =
         |> Cmd.map DependencyGraphLoaded
 
 
-init : ( Model, Cmd Msg )
-init =
+init : Navigation.Location -> ( Model, Cmd Msg )
+init location =
     ( { dependencyGraph = RemoteData.Loading
       , tableState = Table.initialSort "ArtifactId"
-      , page = Home
+      , page = Page.parseLocation location
       }
     , loadDependencyGraph
     )
@@ -73,8 +69,8 @@ updatePure msg model =
         SortTable newState ->
             { model | tableState = newState }
 
-        PageChange newPage ->
-            { model | page = newPage }
+        LocationChanged location ->
+            { model | page = Page.parseLocation location }
 
 
 view : Model -> Html Msg
@@ -100,12 +96,11 @@ viewPage model graph =
             div []
                 [ DG.view
                     SortTable
-                    (PageChange << DependencyDetails)
                     model.tableState
                     (Graph.nodes graph)
                 ]
 
-        DependencyDetails nodeId ->
+        CoordinateDetails nodeId ->
             case Graph.get nodeId graph of
                 Nothing ->
                     text <| "There is no node with nodeId " ++ toString nodeId
@@ -138,12 +133,12 @@ viewDependencyDetails ctx graph =
     div []
         [ h1 [] [ text (Coord.toString coordinate) ]
         , h2 [] [ text "Dependencies", additionalInfo (IntDict.size out) (Tree.size depTree - 1) ]
-        , DG.dependencyTreeView (PageChange << DependencyDetails) depTree
+        , DG.dependencyTreeView depTree
         , h2 [] [ text "Reverse dependencies", additionalInfo (IntDict.size inc) (Tree.size reverseDepTree - 1) ]
-        , DG.dependencyTreeView (PageChange << DependencyDetails) reverseDepTree
+        , DG.dependencyTreeView reverseDepTree
         , h2 [] [ text "Links" ]
         , ul []
-            [ li [] [ a [ href "#", onClick (PageChange Home) ] [ text "Home" ] ]
+            [ li [] [ a [ href (Page.toUrlHash Home) ] [ text "Home" ] ]
             , li [] [ mavenCentralLink coordinate ]
             ]
         ]
