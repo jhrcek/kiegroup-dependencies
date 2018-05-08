@@ -22,14 +22,14 @@ type alias DependencyContext =
     NodeContext Coordinate Scope
 
 
-convertTree : Tree.Tree DependencyContext -> TD.Tree String
+convertTree : Tree.Tree DependencyContext -> TD.Tree DependencyContext
 convertTree t =
     case Tree.root t of
         Nothing ->
-            TD.Node "EMPTY" []
+            Debug.crash "This function can't deal with empty tree"
 
         Just ( ctx, children ) ->
-            TD.Node (Coord.toString ctx.node.label) (List.map convertTree children)
+            TD.Node ctx (List.map convertTree children)
 
 
 

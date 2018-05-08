@@ -1,7 +1,10 @@
-module View.DependencyGraph exposing (view)
+module View.DependencyGraph exposing (dependencyTreeView, view)
 
 import Data.Coordinate as Coord exposing (Coordinate)
+import Data.DependencyGraph exposing (DependencyContext)
+import Data.Tree.Drawer exposing (drawHtml)
 import Graph exposing (Node, NodeId)
+import Graph.Tree as Tree
 import Html exposing (Attribute, Html, a, text)
 import Html.Attributes exposing (href, style)
 import Html.Events exposing (onClick)
@@ -10,6 +13,24 @@ import Table exposing (defaultCustomizations)
 
 type alias CoordinateInfo =
     Node Coordinate
+
+
+dependencyTreeView : (NodeId -> msg) -> Tree.Tree DependencyContext -> Html msg
+dependencyTreeView tag tree =
+    let
+        contextDrawer : DependencyContext -> Html msg
+        contextDrawer dependencyContext =
+            let
+                styl =
+                    if dependencyContext.node.label.isOur then
+                        [ outCoordinateStyle ]
+                    else
+                        []
+            in
+            a ([ href "#", onClick (tag dependencyContext.node.id) ] ++ styl)
+                [ text <| Coord.toString dependencyContext.node.label ]
+    in
+    drawHtml contextDrawer <| Data.DependencyGraph.convertTree tree
 
 
 view : (Table.State -> msg) -> (NodeId -> msg) -> Table.State -> List CoordinateInfo -> Html msg

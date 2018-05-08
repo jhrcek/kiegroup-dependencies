@@ -2,11 +2,9 @@ module Main exposing (main)
 
 import Data.Coordinate as Coord exposing (Coordinate)
 import Data.DependencyGraph as DG exposing (DependencyContext, DependencyGraph)
-import Data.Scope exposing (Scope)
-import Data.Tree.Drawer as TreeDrawer
-import Graph exposing (Adjacency, Node, NodeId)
+import Graph exposing (NodeId)
 import Graph.Tree as Tree
-import Html exposing (Html, a, div, h1, h2, li, pre, span, text, ul)
+import Html exposing (Html, a, div, h1, h2, li, span, text, ul)
 import Html.Attributes exposing (href, style)
 import Html.Events exposing (onClick)
 import Http
@@ -34,7 +32,7 @@ type alias Model =
 
 
 type Page
-    = Summary
+    = Home
     | DependencyDetails NodeId
 
 
@@ -55,7 +53,7 @@ init : ( Model, Cmd Msg )
 init =
     ( { dependencyGraph = RemoteData.Loading
       , tableState = Table.initialSort "ArtifactId"
-      , page = Summary
+      , page = Home
       }
     , loadDependencyGraph
     )
@@ -98,7 +96,7 @@ view model =
 viewPage : Model -> DependencyGraph -> Html Msg
 viewPage model graph =
     case model.page of
-        Summary ->
+        Home ->
             div []
                 [ DG.view
                     SortTable
@@ -131,32 +129,23 @@ viewDependencyDetails ctx graph =
         depTree =
             Graph.dfsTree ctx.node.id graph
 
-        additionalInfo data =
-            span [ style [ ( "font-size", "16px" ) ] ] [ text <| " (" ++ toString data ++ ")" ]
+        reverseDepTree =
+            Graph.dfsTree ctx.node.id <| Graph.reverseEdges graph
+
+        additionalInfo direct transitive =
+            span [ style [ ( "font-size", "16px" ) ] ] [ text <| " (" ++ toString direct ++ " direct, " ++ toString transitive ++ " transitive)" ]
     in
     div []
         [ h1 [] [ text (Coord.toString coordinate) ]
-        , h2 []
-            [ text "Direct dependencies"
-            , additionalInfo (IntDict.size out)
+        , h2 [] [ text "Dependencies", additionalInfo (IntDict.size out) (Tree.size depTree - 1) ]
+        , DG.dependencyTreeView (PageChange << DependencyDetails) depTree
+        , h2 [] [ text "Reverse dependencies", additionalInfo (IntDict.size inc) (Tree.size reverseDepTree - 1) ]
+        , DG.dependencyTreeView (PageChange << DependencyDetails) reverseDepTree
+        , h2 [] [ text "Links" ]
+        , ul []
+            [ li [] [ a [ href "#", onClick (PageChange Home) ] [ text "Home" ] ]
+            , li [] [ mavenCentralLink coordinate ]
             ]
-        , viewAdjacentCoordinates out graph
-        , h2 []
-            [ text "Dependency tree"
-            , additionalInfo (Tree.size depTree)
-            ]
-        , pre [] [ text <| TreeDrawer.draw <| DG.convertTree depTree ]
-        , h2 []
-            [ text "Direct users of this artifact"
-            , additionalInfo (IntDict.size inc)
-            ]
-        , viewAdjacentCoordinates inc graph
-        , h2 []
-            [ text "Transitive users of this artifact"
-            , additionalInfo (Tree.size <| Graph.dfsTree ctx.node.id <| Graph.reverseEdges graph)
-            ]
-        , mavenCentralLink coordinate
-        , a [ href "#", onClick (PageChange Summary) ] [ text "Back to summary" ]
         ]
 
 
@@ -170,22 +159,3 @@ mavenCentralLink coordinate =
         text "Maven central link not available for SNAPSHOT artifacts"
     else
         a [ href url ] [ text "Maven central" ]
-
-
-viewAdjacentCoordinates : Adjacency Scope -> DependencyGraph -> Html Msg
-viewAdjacentCoordinates adj graph =
-    IntDict.toList adj
-        |> List.filterMap
-            (\( nid, _ {- <- TODO use scope -} ) ->
-                Graph.get nid graph
-                    |> Maybe.map (\adjCtx -> viewCoord adjCtx.node)
-            )
-        |> ul []
-
-
-viewCoord : Node Coordinate -> Html Msg
-viewCoord node =
-    li []
-        [ a [ href "#", onClick (PageChange <| DependencyDetails node.id) ]
-            [ text <| Coord.toString node.label ]
-        ]
