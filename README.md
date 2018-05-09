@@ -12,7 +12,60 @@ Tools to enable analysis of maven dependencies across multi-repo maven project(s
 - [x] Given artifact's GAV, show all its dependencies
 - [x] Given artifact's GAV, show all its reverse dependencies
 - [x] Distinguish between internal and 3rd party dependencies
+- [ ] Add breadcrumb showing "Home >> groupId >> artifactId >> version" for easier navigation
+- [ ] Show scope of each dependency in the dep. trees
 - [ ] Visualize module structure for each repo
 - [ ] Make dependency tree view have configurable depth
 - [ ] Show conflicts (groupId:artifactId with different versions?)
 - [ ] Include results of [dependency:analyze-report](https://maven.apache.org/plugins/maven-dependency-plugin/analyze-report-mojo.html)
+
+## How to use it
+
+1. clone all kiegroup repos
+
+```
+mkdir kiegroup
+cd kiegroup
+git clone git@github.com:kiegroup/droolsjbpm-build-bootstrap.git
+./droolsjbpm-build-bootstrap/script/git-clone-others.sh
+```
+
+2. Run maven to produce dependency tree reports. This will produce several hundreds maven module dependency reports (1 per maven module).
+
+```
+./droolsjbpm-build-bootstrap/script/mvn-all.sh dependency:tree -DoutputType=tgf  -DoutputFile=deps.tgf  -DfullProfile
+```
+
+3. [install stack](https://docs.haskellstack.org/en/stable/README/#how-to-install)
+
+4. Build this tool
+
+```
+stack build
+```
+
+5. Run the tool to collect all dependency reports into one file. This will produce `dependency-graph.json` containing all dependency data.
+
+```
+stack exec collect-deps -- /PATH/TO/kiegroup # where you cloned all the repos in step 1
+```
+
+
+6. Build the website that enables you to browse the data in this model
+
+```
+cd frontend/collect-deps
+elm make src/Main.elm --output dist/index.html
+cp ../../dependency-graph.json dist/
+```
+
+7. Serve the contents of the `dist` directory
+```
+cd dist
+python -m SimpleHTTPServer [port]
+```
+
+8. Open the index.html in the browser
+```
+google-chrome dist/index.html
+```
