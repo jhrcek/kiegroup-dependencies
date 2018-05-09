@@ -2,8 +2,14 @@ module Data.DependencyGraph
     exposing
         ( DependencyContext
         , DependencyGraph
+        , DependencyNode
+        , NodeFilter
+        , acceptAll
         , convertTree
         , decoder
+        , groupArtifactFilter
+        , groupArtifactVersionFilter
+        , groupFilter
         )
 
 import Data.Coordinate as Coord exposing (Coordinate)
@@ -20,6 +26,34 @@ type alias DependencyGraph =
 
 type alias DependencyContext =
     NodeContext Coordinate Scope
+
+
+type alias DependencyNode =
+    Node Coordinate
+
+
+type alias NodeFilter =
+    DependencyNode -> Bool
+
+
+acceptAll : NodeFilter
+acceptAll =
+    always True
+
+
+groupFilter : String -> NodeFilter
+groupFilter groupId node =
+    node.label.groupId == groupId
+
+
+groupArtifactFilter : String -> String -> NodeFilter
+groupArtifactFilter groupId artifactId node =
+    node.label.groupId == groupId && node.label.artifactId == artifactId
+
+
+groupArtifactVersionFilter : String -> String -> String -> NodeFilter
+groupArtifactVersionFilter groupId artifactId version node =
+    node.label.artifactId == artifactId && node.label.groupId == groupId && node.label.version == version
 
 
 convertTree : Tree.Tree DependencyContext -> TD.Tree DependencyContext

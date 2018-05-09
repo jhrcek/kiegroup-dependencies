@@ -12,7 +12,7 @@ Tools to enable analysis of maven dependencies across multi-repo maven project(s
 - [x] Given artifact's GAV, show all its dependencies
 - [x] Given artifact's GAV, show all its reverse dependencies
 - [x] Distinguish between internal and 3rd party dependencies
-- [ ] Add breadcrumb showing "Home >> groupId >> artifactId >> version" for easier navigation
+- [x] Add breadcrumb showing "Home >> groupId >> artifactId >> version" for easier navigation
 - [ ] Show scope of each dependency in the dep. trees
 - [ ] Visualize module structure for each repo
 - [ ] Make dependency tree view have configurable depth
