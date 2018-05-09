@@ -41,12 +41,13 @@ git clone git@github.com:kiegroup/droolsjbpm-build-bootstrap.git
 4. Build this tool
 
 ```
-stack build
+make build
 ```
 
 5. Run the tool to collect all dependency reports into one file. This will produce `dependency-graph.json` containing all dependency data.
 
 ```
+cd frontend/collect-deps/dist
 stack exec collect-deps -- /PATH/TO/kiegroup # where you cloned all the repos in step 1
 ```
 
@@ -54,18 +55,10 @@ stack exec collect-deps -- /PATH/TO/kiegroup # where you cloned all the repos in
 6. Build the website that enables you to browse the data in this model
 
 ```
-cd frontend/collect-deps
-elm make src/Main.elm --output dist/index.html
-cp ../../dependency-graph.json dist/
+make front
 ```
 
-7. Serve the contents of the `dist` directory
+7. HTTP serve the `dist` directory and open file index.html in your browser
 ```
-cd dist
-python -m SimpleHTTPServer [port]
-```
-
-8. Open the index.html in the browser
-```
-google-chrome dist/index.html
+make run
 ```

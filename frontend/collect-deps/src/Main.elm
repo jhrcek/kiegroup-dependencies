@@ -40,7 +40,7 @@ type Msg
 
 loadDependencyGraph : Cmd Msg
 loadDependencyGraph =
-    Http.get "/dependency-graph.json" DG.decoder
+    Http.get "dependency-graph.json" DG.decoder
         |> RemoteData.sendRequest
         |> Cmd.map DependencyGraphLoaded
 
