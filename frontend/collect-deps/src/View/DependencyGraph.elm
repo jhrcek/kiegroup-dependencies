@@ -36,14 +36,14 @@ view tableMsg tableState coordinates =
 tableConfig : (Table.State -> msg) -> Table.Config DependencyNode msg
 tableConfig sortMsg =
     Table.customConfig
-        { toId = \ci -> Coord.toString ci.label
+        { toId = \n -> toString n.id
         , toMsg = sortMsg
         , columns =
             [ groupIdLinkColumn
             , artifactIdLinkColumn
             , versionLinkColumn
             , Table.stringColumn "Packaging" (.label >> .packaging)
-            , Table.stringColumn "Qualifier" (\ci -> Maybe.withDefault "-" ci.label.qualifier)
+            , Table.stringColumn "Qualifier" (\n -> Maybe.withDefault "-" n.label.qualifier)
             , detailsLinkColumn
             ]
         , customizations = highlightOurCoordinates

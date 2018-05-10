@@ -162,12 +162,13 @@ viewDependencyDetails ctx graph =
 
 
 mavenCentralLink : Coordinate -> Html a
-mavenCentralLink { groupId, artifactId, version } =
-    let
-        url =
-            String.join "/" [ "https://mvnrepository.com/artifact", groupId, artifactId, version ]
-    in
-    if String.endsWith "SNAPSHOT" version then
+mavenCentralLink coordinate =
+    if String.endsWith "SNAPSHOT" coordinate.version then
         text ""
     else
-        a [ href url ] [ text "Maven central" ]
+        a [ href <| mavenCentralUrl coordinate ] [ text "Maven central" ]
+
+
+mavenCentralUrl : Coordinate -> String
+mavenCentralUrl { groupId, artifactId, version } =
+    String.join "/" [ "https://mvnrepository.com/artifact", groupId, artifactId, version ]
