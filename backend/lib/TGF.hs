@@ -1,6 +1,4 @@
-{-# LANGUAGE DeriveAnyClass    #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell   #-}
 
 module TGF
     ( Coordinate(..)
@@ -10,18 +8,19 @@ module TGF
     , parseDepGraph
     ) where
 
-import           Data.Aeson.TH
-import           Data.Attoparsec.Text       (Parser, char, choice, decimal,
-                                             endOfInput, endOfLine, isEndOfLine,
-                                             parseOnly, sepBy, skipMany, space,
-                                             string, takeTill, takeWhile, (<?>))
-import           Data.Char                  (isDigit, toLower)
-import           Data.Functor               (($>))
-import           Data.Set                   (Set)
-import qualified Data.Set                   as Set
-import           Data.Text                  (Text)
-import qualified Data.Text                  as Txt
-import           Prelude                    hiding (takeWhile)
+import           Data.Attoparsec.Text (Parser, char, choice, decimal,
+                                       endOfInput, endOfLine, isEndOfLine,
+                                       parseOnly, sepBy, skipMany, space,
+                                       string, takeTill, takeWhile, (<?>))
+import           Data.Char            (isDigit)
+import           Data.Functor         (($>))
+import           Data.Set             (Set)
+import qualified Data.Set             as Set
+import           Data.Text            (Text)
+import qualified Data.Text            as Txt
+import           Prelude              hiding (takeWhile)
+
+import           Coordinate           (Coordinate (..), Scope (..))
 
 data Tgf n e = Tgf
     { nodeDeclarations :: [(Int, n)]
@@ -47,8 +46,6 @@ tgfP nodeLabelParser edgeLabelParser = Tgf
     edgeDeclP = (,,) <$> dec <*> dec <*> edgeLabelParser
     dec = decimal <* space
 
-data Scope = Compile | Provided | Runtime | System | Test
-    deriving (Eq, Ord, Show)
 
 scopeP :: Parser Scope
 scopeP = choice
@@ -58,23 +55,6 @@ scopeP = choice
     , string "system" $> System
     , string "test" $>  Test
     ]
-
-{-| Maven Coordinates as described in https://maven.apache.org/pom.html#Maven_Coordinates -}
-data Coordinate = Coordinate
-    { cGroupId    :: Text
-    , cArtifactId :: Text
-    , cPackaging  :: Text
-    , cQualifier  :: Maybe Text
-    , cVersion    :: Text
-    } deriving (Eq, Ord)
-
-instance Show Coordinate where
-    show (Coordinate grp art pac mayQualifier ver) =
-        Txt.unpack $ Txt.intercalate ":" fields
-      where
-        fields = grp : art : pac : case mayQualifier of
-            Just qual -> [qual, ver]
-            Nothing   -> [      ver]
 
 coordinateP :: Parser Coordinate
 coordinateP = do
@@ -126,11 +106,3 @@ knownPackagings = Set.fromList
     ,"xml"
     ,"zip"
     ]
-
-$(deriveJSON defaultOptions{ fieldLabelModifier = map toLower . take 2 . drop 1
-                           , omitNothingFields = True
-                           } ''Coordinate)
-
-$(deriveJSON defaultOptions{ fieldLabelModifier = map toLower
-                            , constructorTagModifier = \t -> [toLower (head t)]
-                            } ''Scope)
