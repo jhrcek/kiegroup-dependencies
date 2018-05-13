@@ -142,22 +142,26 @@ viewDependencyDetails ctx graph =
         out =
             ctx.outgoing
 
+        revGraph =
+            Graph.reverseEdges graph
+
         depTree =
             Graph.dfsTree ctx.node.id graph
 
         reverseDepTree =
-            Graph.dfsTree ctx.node.id <| Graph.reverseEdges graph
+            Graph.dfsTree ctx.node.id revGraph
 
         additionalInfo direct transitive =
-            span [ style [ ( "font-size", "16px" ) ] ] [ text <| " (" ++ toString direct ++ " direct, " ++ toString transitive ++ " transitive)" ]
+            span [ style [ ( "font-size", "16px" ) ] ]
+                [ text <| " (" ++ toString direct ++ " direct, " ++ toString transitive ++ " transitive)" ]
     in
     div []
         [ h1 [] [ text (Coord.toString coordinate) ]
         , mavenCentralLink coordinate
         , h2 [] [ text "Dependencies", additionalInfo (IntDict.size out) (Tree.size depTree - 1) ]
-        , DG.dependencyTreeView depTree
+        , DG.dependencyTreeView depTree graph
         , h2 [] [ text "Reverse dependencies", additionalInfo (IntDict.size inc) (Tree.size reverseDepTree - 1) ]
-        , DG.dependencyTreeView reverseDepTree
+        , DG.dependencyTreeView reverseDepTree revGraph
         ]
 
 

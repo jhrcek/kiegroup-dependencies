@@ -9,3 +9,47 @@ table {
 td, th {
   border: 1px solid black;
 }
+
+.highlight {
+  background-color: lightblue;
+}
+
+/* Scope badges inspired by bootstrap pill badges https://getbootstrap.com/docs/4.0/components/badge/#pill-badges */
+
+.sc {
+  color: white;
+  margin-left: 0.5em;
+  padding-left: 0.6em;
+  padding-right: 0.6em;
+  border-radius: 10rem;
+}
+
+/* Compile - Provided - Runtime - System - Test */
+
+.co {
+  background-color: #28a745
+}
+
+.pr {
+  background-color: #6c757d
+}
+
+.ru {
+  background-color: #dc3545
+}
+
+.sy {
+  background-color: #17a2b8
+}
+
+.te {
+  background-color: #007bff
+}
+
+a:link, a:visited {
+  text-decoration: none;
+}
+
+a:hover, a:active {
+  text-decoration: underline;
+}

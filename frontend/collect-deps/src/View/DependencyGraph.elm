@@ -1,31 +1,42 @@
 module View.DependencyGraph exposing (dependencyTreeView, view)
 
 import Data.Coordinate as Coord
-import Data.DependencyGraph exposing (DependencyContext, DependencyNode)
+import Data.DependencyGraph exposing (DependencyContext, DependencyGraph, DependencyNode)
+import Data.Scope as Scope exposing (Scope(..))
 import Data.Tree.Drawer exposing (drawHtml)
 import Graph.Tree as Tree
-import Html exposing (Attribute, Html, a, text)
-import Html.Attributes exposing (href, style)
+import Html exposing (Attribute, Html, a, span, text)
+import Html.Attributes exposing (class, classList, href)
 import Page
 import Table exposing (defaultCustomizations)
 
 
-dependencyTreeView : Tree.Tree DependencyContext -> Html msg
-dependencyTreeView tree =
+dependencyTreeView : Tree.Tree DependencyContext -> DependencyGraph -> Html msg
+dependencyTreeView tree graph =
     let
-        contextDrawer : DependencyContext -> Html msg
-        contextDrawer dependencyContext =
+        contextDrawer : ( DependencyNode, Maybe Scope ) -> Html msg
+        contextDrawer ( node, mScope ) =
             let
-                styl =
-                    if dependencyContext.node.label.isOur then
-                        [ outCoordinateStyle ]
-                    else
-                        []
+                coordinateLink =
+                    a
+                        [ href (Page.toUrlHash (Page.CoordinateDetails node.id))
+                        , highlightCoordinate node.label.isOur
+                        ]
+                        [ text (Coord.toString node.label) ]
+
+                scopeInfo =
+                    mScope
+                        |> Maybe.map
+                            (\scope ->
+                                [ span [ class (Scope.toCssClass scope) ]
+                                    [ text (Scope.toString scope) ]
+                                ]
+                            )
+                        |> Maybe.withDefault []
             in
-            a (href (Page.toUrlHash (Page.CoordinateDetails dependencyContext.node.id)) :: styl)
-                [ text <| Coord.toString dependencyContext.node.label ]
+            span [] (coordinateLink :: scopeInfo)
     in
-    drawHtml contextDrawer <| Data.DependencyGraph.convertTree tree
+    drawHtml contextDrawer <| Data.DependencyGraph.convertTree graph Nothing tree
 
 
 view : (Table.State -> msg) -> Table.State -> List DependencyNode -> Html msg
@@ -116,16 +127,9 @@ detailsLinkColumn =
 
 highlightOurCoordinates : Table.Customizations DependencyNode msg
 highlightOurCoordinates =
-    let
-        toRowAttrs ci =
-            if ci.label.isOur then
-                [ outCoordinateStyle ]
-            else
-                []
-    in
-    { defaultCustomizations | rowAttrs = toRowAttrs }
+    { defaultCustomizations | rowAttrs = \node -> [ highlightCoordinate node.label.isOur ] }
 
 
-outCoordinateStyle : Attribute msg
-outCoordinateStyle =
-    style [ ( "background-color", "lightblue" ) ]
+highlightCoordinate : Bool -> Attribute msg
+highlightCoordinate isHighlighted =
+    classList [ ( "highlight", isHighlighted ) ]

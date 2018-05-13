@@ -13,7 +13,7 @@ Tools to enable analysis of maven dependencies across multi-repo maven project(s
 - [x] Given artifact's GAV, show all its reverse dependencies
 - [x] Distinguish between internal and 3rd party dependencies
 - [x] Add breadcrumb showing "Home >> groupId >> artifactId >> version" for easier navigation
-- [ ] Show scope of each dependency in the dep. trees
+- [x] Show scope of each dependency in the dep. trees
 - [ ] Visualize module structure for each repo
 - [ ] Make dependency tree view have configurable depth
 - [ ] Show conflicts (groupId:artifactId with different versions?)
@@ -22,7 +22,6 @@ Tools to enable analysis of maven dependencies across multi-repo maven project(s
 ## How to use it
 
 1. clone all kiegroup repos
-
 ```
 mkdir kiegroup
 cd kiegroup
@@ -31,29 +30,23 @@ git clone git@github.com:kiegroup/droolsjbpm-build-bootstrap.git
 ```
 
 2. Run maven to produce dependency tree reports. This will produce several hundreds maven module dependency reports (1 per maven module).
-
 ```
 ./droolsjbpm-build-bootstrap/script/mvn-all.sh dependency:tree -DoutputType=tgf  -DoutputFile=deps.tgf  -DfullProfile
 ```
 
-3. [install stack](https://docs.haskellstack.org/en/stable/README/#how-to-install)
+3. This tool uses Haskell script to collect and deduplicate all individual dependency trees into one huge dependency graph. You need to [install stack](https://docs.haskellstack.org/en/stable/README/#how-to-install) to run it.
 
-4. Build this tool
-
+4. Build the tool
 ```
 make build
 ```
 
 5. Run the tool to collect all dependency reports into one file. This will produce `dependency-graph.json` containing all dependency data.
-
 ```
-cd frontend/collect-deps/dist
-stack exec collect-deps -- /PATH/TO/kiegroup # where you cloned all the repos in step 1
+make report
 ```
-
 
 6. Build the website that enables you to browse the data in this model
-
 ```
 make front
 ```
