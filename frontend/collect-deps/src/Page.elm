@@ -1,6 +1,6 @@
 module Page
     exposing
-        ( Page(CoordinateDetails, Group, GroupArtifact, GroupArtifactVersion, Home)
+        ( Page(CoordinateDetails, DependencyConvergence, Group, GroupArtifact, GroupArtifactVersion, Home)
         , groupArtifactLink
         , groupArtifactVersionLink
         , groupLink
@@ -25,22 +25,45 @@ type Page
     | GroupArtifact String String
     | GroupArtifactVersion String String String
     | CoordinateDetails NodeId
+    | DependencyConvergence
 
 
 toBreadCrumb : Page -> DependencyGraph -> Html a
 toBreadCrumb page graph =
+    let
+        joinWithArrow items =
+            List.intersperse (text " » ") items |> div []
+    in
     case page of
         Home ->
-            div [] [ text "Home" ]
+            joinWithArrow [ text "Home" ]
+
+        DependencyConvergence ->
+            joinWithArrow
+                [ homeLink
+                , text "Dependency Convergence"
+                ]
 
         Group groupId ->
-            div [] [ homeLink, text (" » " ++ groupId) ]
+            joinWithArrow
+                [ homeLink
+                , text groupId
+                ]
 
         GroupArtifact groupId artifactId ->
-            div [] [ homeLink, text " » ", groupLink groupId, text (" » " ++ artifactId) ]
+            joinWithArrow
+                [ homeLink
+                , groupLink groupId
+                , text artifactId
+                ]
 
         GroupArtifactVersion groupId artifactId version ->
-            div [] [ homeLink, text " » ", groupLink groupId, text " » ", groupArtifactLink groupId artifactId, text (" » " ++ version) ]
+            joinWithArrow
+                [ homeLink
+                , groupLink groupId
+                , groupArtifactLink groupId artifactId
+                , text version
+                ]
 
         CoordinateDetails nodeId ->
             case Graph.get nodeId graph of
@@ -52,15 +75,12 @@ toBreadCrumb page graph =
                         { groupId, artifactId, version } =
                             ctx.node.label
                     in
-                    div []
+                    joinWithArrow
                         [ homeLink
-                        , text " » "
                         , groupLink groupId
-                        , text " » "
                         , groupArtifactLink groupId artifactId
-                        , text " » "
                         , groupArtifactVersionLink groupId artifactId version
-                        , text (" » " ++ Coord.toString ctx.node.label)
+                        , text (Coord.toString ctx.node.label)
                         ]
 
 
@@ -92,6 +112,9 @@ toUrlHash page =
                 Home ->
                     []
 
+                DependencyConvergence ->
+                    [ "dependency-convergence" ]
+
                 Group groupId ->
                     [ "group", groupId ]
 
@@ -112,6 +135,7 @@ route =
     oneOf
         [ map Home top
         , map Group (s "group" </> string)
+        , map DependencyConvergence (s "dependency-convergence")
         , map GroupArtifact (s "group" </> string </> s "artifact" </> string)
         , map GroupArtifactVersion (s "group" </> string </> s "artifact" </> string </> s "version" </> string)
         , map CoordinateDetails (s "coordinate" </> int)

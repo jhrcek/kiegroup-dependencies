@@ -10,6 +10,7 @@ import Http
 import IntDict
 import Navigation
 import Page exposing (Page(..))
+import Page.DependencyConvergence as Convergence
 import RemoteData exposing (RemoteData(..), WebData)
 import Table
 import View.DependencyGraph as DG
@@ -99,6 +100,9 @@ viewPage model graph =
             case model.page of
                 Home ->
                     viewArtifactTable model.tableState graph DG.acceptAll
+
+                DependencyConvergence ->
+                    Convergence.view graph
 
                 Group groupId ->
                     viewArtifactTable model.tableState graph (DG.groupFilter groupId)

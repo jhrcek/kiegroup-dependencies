@@ -1,4 +1,4 @@
-# POMs Cleanup
+# Kiegroup dependencies
 
 Tools to enable analysis of maven dependencies across multi-repo maven project(s).
 
@@ -8,16 +8,16 @@ Tools to enable analysis of maven dependencies across multi-repo maven project(s
 - [x] Come up with a convenient representation of TFG data for easy consumption by front end
 - [x] For each artifact calculate number of direct/transitive dependencies
 - [x] For each artifact calculate number of direct/transitive reverse dependencies
-- [x] Visualize dependency tree for each artifact
-- [x] Given artifact's GAV, show all its dependencies
-- [x] Given artifact's GAV, show all its reverse dependencies
-- [x] Distinguish between internal and 3rd party dependencies
+- [x] Show dependency tree of each artifact
+- [x] Show reverse dependency tree of each artifact
+- [x] Distinguish between internal and 3rd party dependencies (based on groupId)
 - [x] Add breadcrumb showing "Home >> groupId >> artifactId >> version" for easier navigation
-- [x] Show scope of each dependency in the dep. trees
+- [x] Show scope of each dependency in the dependency trees
+- [x] Dependency convergence report (groupId:artifactId with multiple different versions)
 - [ ] Visualize module structure for each repo
 - [ ] Make dependency tree view have configurable depth
-- [ ] Show conflicts (groupId:artifactId with different versions?)
 - [ ] Include results of [dependency:analyze-report](https://maven.apache.org/plugins/maven-dependency-plugin/analyze-report-mojo.html)
+- [ ] Add link from each kiegroup artifact to it's associated github repository
 
 ## How to use it
 
@@ -31,7 +31,8 @@ git clone git@github.com:kiegroup/droolsjbpm-build-bootstrap.git
 
 2. Run maven to produce dependency tree reports. This will produce several hundreds maven module dependency reports (1 per maven module).
 ```
-./droolsjbpm-build-bootstrap/script/mvn-all.sh dependency:tree -DoutputType=tgf  -DoutputFile=deps.tgf  -DfullProfile
+./droolsjbpm-build-bootstrap/script/mvn-all.sh \
+dependency:tree -DoutputType=tgf  -DoutputFile=deps.tgf  -DfullProfile
 ```
 
 3. This tool uses Haskell script to collect and deduplicate all individual dependency trees into one huge dependency graph. You need to [install stack](https://docs.haskellstack.org/en/stable/README/#how-to-install) to run it.
