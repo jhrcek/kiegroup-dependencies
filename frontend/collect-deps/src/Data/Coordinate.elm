@@ -1,5 +1,7 @@
-module Data.Coordinate exposing (Coordinate, decoder, toString)
+module Data.Coordinate exposing (Coordinate, decoder, highlight, toString)
 
+import Html exposing (Attribute)
+import Html.Attributes exposing (classList)
 import Json.Decode as Decode exposing (Decoder, string)
 import Json.Decode.Pipeline exposing (decode, optional, required)
 
@@ -59,3 +61,8 @@ toString c =
                     [ c.groupId, c.artifactId, c.packaging, qualifier, c.version ]
     in
     String.join ":" fields
+
+
+highlight : Bool -> Attribute msg
+highlight isHighlighted =
+    classList [ ( "highlight", isHighlighted ) ]

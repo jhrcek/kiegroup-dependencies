@@ -1,42 +1,11 @@
-module View.DependencyGraph exposing (dependencyTreeView, view)
+module View.DependencyTable exposing (view)
 
 import Data.Coordinate as Coord
-import Data.DependencyGraph exposing (DependencyContext, DependencyGraph, DependencyNode)
-import Data.Scope as Scope exposing (Scope(..))
-import Data.Tree.Drawer exposing (drawHtml)
-import Graph.Tree as Tree
-import Html exposing (Attribute, Html, a, span, text)
-import Html.Attributes exposing (class, classList, href)
+import Data.DependencyGraph exposing (DependencyNode)
+import Html exposing (Html, a, text)
+import Html.Attributes exposing (href)
 import Page
 import Table exposing (defaultCustomizations)
-
-
-dependencyTreeView : Tree.Tree DependencyContext -> DependencyGraph -> Html msg
-dependencyTreeView tree graph =
-    let
-        contextDrawer : ( DependencyNode, Maybe Scope ) -> Html msg
-        contextDrawer ( node, mScope ) =
-            let
-                coordinateLink =
-                    a
-                        [ href (Page.toUrlHash (Page.CoordinateDetails node.id))
-                        , highlightCoordinate node.label.isOur
-                        ]
-                        [ text (Coord.toString node.label) ]
-
-                scopeInfo =
-                    mScope
-                        |> Maybe.map
-                            (\scope ->
-                                [ span [ class (Scope.toCssClass scope) ]
-                                    [ text (Scope.toString scope) ]
-                                ]
-                            )
-                        |> Maybe.withDefault []
-            in
-            span [] (coordinateLink :: scopeInfo)
-    in
-    drawHtml contextDrawer <| Data.DependencyGraph.convertTree graph Nothing tree
 
 
 view : (Table.State -> msg) -> Table.State -> List DependencyNode -> Html msg
@@ -127,9 +96,4 @@ detailsLinkColumn =
 
 highlightOurCoordinates : Table.Customizations DependencyNode msg
 highlightOurCoordinates =
-    { defaultCustomizations | rowAttrs = \node -> [ highlightCoordinate node.label.isOur ] }
-
-
-highlightCoordinate : Bool -> Attribute msg
-highlightCoordinate isHighlighted =
-    classList [ ( "highlight", isHighlighted ) ]
+    { defaultCustomizations | rowAttrs = \node -> [ Coord.highlight node.label.isOur ] }

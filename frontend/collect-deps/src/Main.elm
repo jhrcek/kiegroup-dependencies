@@ -1,11 +1,14 @@
 module Main exposing (main)
 
 import Data.Coordinate as Coord exposing (Coordinate)
-import Data.DependencyGraph as DG exposing (DependencyContext, DependencyGraph, NodeFilter)
-import Graph exposing (Graph)
+import Data.DependencyGraph as DepGraph exposing (DependencyContext, DependencyGraph, NodeFilter)
+import Data.DependencyTree as DepTree
+import Data.Scope exposing (Scope)
+import Graph exposing (Adjacency)
 import Graph.Tree as Tree
-import Html exposing (Html, a, div, h1, h2, span, text)
-import Html.Attributes exposing (href, style)
+import Html exposing (Html, a, button, div, h1, h2, text)
+import Html.Attributes exposing (href)
+import Html.Events exposing (onClick)
 import Http
 import IntDict
 import Navigation
@@ -13,7 +16,8 @@ import Page exposing (Page(..))
 import Page.DependencyConvergence as Convergence
 import RemoteData exposing (RemoteData(..), WebData)
 import Table
-import View.DependencyGraph as DG
+import View.DependencyTable as DepTable
+import View.DependencyTree as DepTree
 
 
 main : Program Never Model Msg
@@ -28,8 +32,15 @@ main =
 
 type alias Model =
     { dependencyGraph : WebData DependencyGraph
+    , transitiveConfig : TransitiveConfig
     , tableState : Table.State
     , page : Page
+    }
+
+
+type alias TransitiveConfig =
+    { showForward : Bool
+    , showReverse : Bool
     }
 
 
@@ -37,11 +48,13 @@ type Msg
     = DependencyGraphLoaded (WebData DependencyGraph)
     | SortTable Table.State
     | LocationChanged Navigation.Location
+    | ShowForwardTransitive Bool
+    | ShowReverseTransitive Bool
 
 
 loadDependencyGraph : Cmd Msg
 loadDependencyGraph =
-    Http.get "dependency-graph.json" DG.decoder
+    Http.get "dependency-graph.json" DepGraph.decoder
         |> RemoteData.sendRequest
         |> Cmd.map DependencyGraphLoaded
 
@@ -49,6 +62,10 @@ loadDependencyGraph =
 init : Navigation.Location -> ( Model, Cmd Msg )
 init location =
     ( { dependencyGraph = RemoteData.Loading
+      , transitiveConfig =
+            { showForward = True
+            , showReverse = True
+            }
       , tableState = Table.initialSort "ArtifactId"
       , page = Page.parseLocation location
       }
@@ -72,6 +89,12 @@ updatePure msg model =
 
         LocationChanged location ->
             { model | page = Page.parseLocation location }
+
+        ShowForwardTransitive bool ->
+            { model | transitiveConfig = setShowForwardTransitive bool model.transitiveConfig }
+
+        ShowReverseTransitive bool ->
+            { model | transitiveConfig = setShowReverseTransitive bool model.transitiveConfig }
 
 
 view : Model -> Html Msg
@@ -99,19 +122,19 @@ viewPage model graph =
         contents =
             case model.page of
                 Home ->
-                    viewArtifactTable model.tableState graph DG.acceptAll
+                    viewArtifactTable model.tableState graph DepGraph.acceptAll
 
                 DependencyConvergence ->
                     Convergence.view graph
 
                 Group groupId ->
-                    viewArtifactTable model.tableState graph (DG.groupFilter groupId)
+                    viewArtifactTable model.tableState graph (DepGraph.groupFilter groupId)
 
                 GroupArtifact groupId artifactId ->
-                    viewArtifactTable model.tableState graph (DG.groupArtifactFilter groupId artifactId)
+                    viewArtifactTable model.tableState graph (DepGraph.groupArtifactFilter groupId artifactId)
 
                 GroupArtifactVersion groupId artifactId version ->
-                    viewArtifactTable model.tableState graph (DG.groupArtifactVersionFilter groupId artifactId version)
+                    viewArtifactTable model.tableState graph (DepGraph.groupArtifactVersionFilter groupId artifactId version)
 
                 CoordinateDetails nodeId ->
                     case Graph.get nodeId graph of
@@ -119,53 +142,92 @@ viewPage model graph =
                             text <| "There is no coordinate with nodeId " ++ toString nodeId
 
                         Just nodeContext ->
-                            viewDependencyDetails nodeContext graph
+                            viewDependencyDetails model.transitiveConfig nodeContext graph
     in
     div [] [ breadcrumb, contents ]
 
 
-viewArtifactTable : Table.State -> Graph Coordinate e -> NodeFilter -> Html Msg
+setShowForwardTransitive : Bool -> TransitiveConfig -> TransitiveConfig
+setShowForwardTransitive show c =
+    { c | showForward = show }
+
+
+setShowReverseTransitive : Bool -> TransitiveConfig -> TransitiveConfig
+setShowReverseTransitive show c =
+    { c | showReverse = show }
+
+
+viewArtifactTable : Table.State -> DependencyGraph -> NodeFilter -> Html Msg
 viewArtifactTable tableState graph nodeFilter =
-    div []
-        [ DG.view
-            SortTable
-            tableState
-            (Graph.nodes graph |> List.filter nodeFilter)
-        ]
+    DepTable.view
+        SortTable
+        tableState
+        (Graph.nodes graph |> List.filter nodeFilter)
 
 
-viewDependencyDetails : DependencyContext -> DependencyGraph -> Html Msg
-viewDependencyDetails ctx graph =
+viewDependencyDetails : TransitiveConfig -> DependencyContext -> DependencyGraph -> Html Msg
+viewDependencyDetails transitiveConfig ctx graph =
     let
         coordinate =
             ctx.node.label
 
-        inc =
-            ctx.incoming
-
-        out =
-            ctx.outgoing
-
         revGraph =
             Graph.reverseEdges graph
-
-        depTree =
-            Graph.dfsTree ctx.node.id graph
-
-        reverseDepTree =
-            Graph.dfsTree ctx.node.id revGraph
-
-        additionalInfo direct transitive =
-            span [ style [ ( "font-size", "16px" ) ] ]
-                [ text <| " (" ++ toString direct ++ " direct, " ++ toString transitive ++ " transitive)" ]
     in
     div []
         [ h1 [] [ text (Coord.toString coordinate) ]
         , mavenCentralLink coordinate
-        , h2 [] [ text "Dependencies", additionalInfo (IntDict.size out) (Tree.size depTree - 1) ]
-        , DG.dependencyTreeView depTree graph
-        , h2 [] [ text "Reverse dependencies", additionalInfo (IntDict.size inc) (Tree.size reverseDepTree - 1) ]
-        , DG.dependencyTreeView reverseDepTree revGraph
+        , dependencyTreeView
+            "Dependencies"
+            graph
+            ctx
+            ctx.outgoing
+            transitiveConfig.showForward
+            ShowForwardTransitive
+        , dependencyTreeView
+            "Reverse dependencies"
+            revGraph
+            ctx
+            ctx.incoming
+            transitiveConfig.showReverse
+            ShowReverseTransitive
+        ]
+
+
+dependencyTreeView : String -> DependencyGraph -> DependencyContext -> Adjacency Scope -> Bool -> (Bool -> Msg) -> Html Msg
+dependencyTreeView heading graph depCtx directChildren showTransitive transitToggleMsg =
+    let
+        depTree : Tree.Tree DependencyContext
+        depTree =
+            Graph.dfsTree depCtx.node.id graph
+
+        viewCounts : Int -> Int -> Html msg
+        viewCounts directCount transitiveCount =
+            text <| toString directCount ++ " direct, " ++ toString transitiveCount ++ " transitive "
+
+        transitiveControlButton =
+            button [ onClick (transitToggleMsg (not showTransitive)) ]
+                [ text <|
+                    (if showTransitive then
+                        "Hide"
+                     else
+                        "Show"
+                    )
+                        ++ " transitive"
+                ]
+
+        transitiveDepsCount =
+            Tree.size depTree - 1
+    in
+    div []
+        [ h2 [] [ text heading ]
+        , viewCounts (IntDict.size directChildren) transitiveDepsCount
+        , viewIf (transitiveDepsCount > 0) transitiveControlButton
+        , DepTree.view <|
+            if showTransitive then
+                DepTree.buildTransitiveDependencyTree graph depTree
+            else
+                DepTree.buildDirectDependencyTree graph depCtx.node directChildren
         ]
 
 
@@ -180,3 +242,11 @@ mavenCentralLink coordinate =
 mavenCentralUrl : Coordinate -> String
 mavenCentralUrl { groupId, artifactId, version } =
     String.join "/" [ "https://mvnrepository.com/artifact", groupId, artifactId, version ]
+
+
+viewIf : Bool -> Html a -> Html a
+viewIf test html =
+    if test then
+        html
+    else
+        text ""
