@@ -1,4 +1,4 @@
-module Data.Coordinate exposing (Coordinate, decoder, highlight, toString)
+module Data.Coordinate exposing (BackendCoordinate, Coordinate, decoder, highlight, toString)
 
 import Html exposing (Attribute)
 import Html.Attributes exposing (classList)
@@ -6,50 +6,55 @@ import Json.Decode as Decode exposing (Decoder, string)
 import Json.Decode.Pipeline exposing (decode, optional, required)
 
 
-type alias Coordinate =
-    { groupId : String
-    , artifactId : String
-    , packaging : String
-    , qualifier : Maybe String
-    , version : String
-    , isOur : Bool
+type alias ExtensibleCoordinate a =
+    { a
+        | groupId : String
+        , artifactId : String
+        , packaging : String
+        , qualifier : Maybe String
+        , version : String
     }
 
 
-decoder : Decoder Coordinate
+{-| From the backend we get just group:artifact:packaging:qualifier:version
+-}
+type alias BackendCoordinate =
+    ExtensibleCoordinate {}
+
+
+{-| In the frontend we calculate and cache additional info for speed
+
+  - isOur - is it kiegroup or 3rd party dep?
+  - transitiveDepsCount - number of transitive dependencies
+
+-}
+type alias Coordinate =
+    ExtensibleCoordinate
+        { isOur : Bool
+        , transitiveDepsCount : Int
+        , reverseTransitiveDepsCount : Int
+        }
+
+
+decoder : Decoder BackendCoordinate
 decoder =
-    Decode.field "gr" string
-        |> Decode.andThen
-            (\groupId ->
-                let
-                    isOur =
-                        isOurGroupId groupId
-                in
-                decode (\a p q v -> Coordinate groupId a p q v isOur)
-                    |> required "ar" string
-                    |> required "pa" string
-                    |> optional "qu" (Decode.map Just string) Nothing
-                    |> required "ve" string
-            )
+    decode
+        (\g a p q v ->
+            { groupId = g
+            , artifactId = a
+            , packaging = p
+            , qualifier = q
+            , version = v
+            }
+        )
+        |> required "gr" string
+        |> required "ar" string
+        |> required "pa" string
+        |> optional "qu" (Decode.map Just string) Nothing
+        |> required "ve" string
 
 
-isOurGroupId : String -> Bool
-isOurGroupId testedGroupId =
-    List.any (\ourGroupId -> String.startsWith ourGroupId testedGroupId) ourGroupIds
-
-
-ourGroupIds : List String
-ourGroupIds =
-    [ "org.kie"
-    , "org.drools"
-    , "org.jbpm"
-    , "org.uberfire"
-    , "org.dashbuilder"
-    , "org.optaplanner"
-    ]
-
-
-toString : Coordinate -> String
+toString : ExtensibleCoordinate a -> String
 toString c =
     let
         fields =

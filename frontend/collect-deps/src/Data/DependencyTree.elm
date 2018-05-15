@@ -83,5 +83,7 @@ dummy =
         , qualifier = Nothing
         , version = ""
         , isOur = False
+        , transitiveDepsCount = 0
+        , reverseTransitiveDepsCount = 0
         }
     }

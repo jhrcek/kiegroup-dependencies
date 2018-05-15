@@ -1,7 +1,7 @@
 module Main exposing (main)
 
 import Data.Coordinate as Coord exposing (Coordinate)
-import Data.DependencyGraph as DepGraph exposing (DependencyContext, DependencyGraph, NodeFilter)
+import Data.DependencyGraph as DepGraph exposing (BackendDependencyGraph, DependencyContext, DependencyGraph, NodeFilter)
 import Data.DependencyTree as DepTree
 import Data.Scope exposing (Scope)
 import Graph exposing (Adjacency)
@@ -45,7 +45,7 @@ type alias TransitiveConfig =
 
 
 type Msg
-    = DependencyGraphLoaded (WebData DependencyGraph)
+    = DependencyGraphLoaded (WebData BackendDependencyGraph)
     | SortTable Table.State
     | LocationChanged Navigation.Location
     | ShowForwardTransitive Bool
@@ -82,7 +82,11 @@ updatePure : Msg -> Model -> Model
 updatePure msg model =
     case msg of
         DependencyGraphLoaded newDependencyGraph ->
-            { model | dependencyGraph = newDependencyGraph }
+            let
+                enrichedDepGraph =
+                    RemoteData.map DepGraph.calculateFrontentData newDependencyGraph
+            in
+            { model | dependencyGraph = enrichedDepGraph }
 
         SortTable newState ->
             { model | tableState = newState }
