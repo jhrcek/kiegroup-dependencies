@@ -4,7 +4,7 @@ import Data.DependencyGraph exposing (DependencyGraph)
 import Dict
 import Dict.Extra
 import Graph
-import Html exposing (Html, caption, div, h1, table, td, text, th, tr)
+import Html exposing (Html, caption, table, td, text, th, tr)
 import Page exposing (Page(..))
 import Set
 
@@ -41,7 +41,4 @@ view graph =
                 )
                 groupAndArtifact_to_versions
     in
-    div []
-        [ h1 [] [ text "Dependency convergence" ]
-        , table [] (tableCaption :: tableHeading :: tableRows)
-        ]
+    table [] (tableCaption :: tableHeading :: tableRows)

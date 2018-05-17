@@ -7,10 +7,11 @@ import Data.Scope exposing (Scope)
 import Graph exposing (Adjacency)
 import Graph.Tree as Tree
 import Html exposing (Html, a, button, div, h1, h2, text)
-import Html.Attributes exposing (href)
+import Html.Attributes exposing (class, href, target)
 import Html.Events exposing (onClick)
 import Http
 import IntDict
+import Markdown
 import Navigation
 import Page exposing (Page(..))
 import Page.DependencyConvergence as Convergence
@@ -120,13 +121,13 @@ view model =
 viewPage : Model -> DependencyGraph -> Html Msg
 viewPage model graph =
     let
-        breadcrumb =
-            Page.toBreadCrumb model.page graph
-
-        contents =
+        content =
             case model.page of
-                Home ->
+                AllArtifacts ->
                     viewArtifactTable model.tableState graph DepGraph.acceptAll
+
+                Help ->
+                    viewHelp
 
                 DependencyConvergence ->
                     Convergence.view graph
@@ -148,7 +149,11 @@ viewPage model graph =
                         Just nodeContext ->
                             viewDependencyDetails model.transitiveConfig nodeContext graph
     in
-    div [] [ breadcrumb, contents ]
+    div []
+        [ Page.navigation model.page graph
+        , div [ class "content" ]
+            [ content ]
+        ]
 
 
 setShowForwardTransitive : Bool -> TransitiveConfig -> TransitiveConfig
@@ -240,7 +245,7 @@ mavenCentralLink coordinate =
     if String.endsWith "SNAPSHOT" coordinate.version then
         text ""
     else
-        a [ href <| mavenCentralUrl coordinate ] [ text "Maven central" ]
+        a [ href <| mavenCentralUrl coordinate, target "_blank" ] [ text "Maven central" ]
 
 
 mavenCentralUrl : Coordinate -> String
@@ -254,3 +259,10 @@ viewIf test html =
         html
     else
         text ""
+
+
+viewHelp : Html a
+viewHelp =
+    Markdown.toHtml [] """
+TODO
+"""

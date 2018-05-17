@@ -1,12 +1,11 @@
 module Page
     exposing
-        ( Page(CoordinateDetails, DependencyConvergence, Group, GroupArtifact, GroupArtifactVersion, Home)
+        ( Page(AllArtifacts, CoordinateDetails, DependencyConvergence, Group, GroupArtifact, GroupArtifactVersion, Help)
         , groupArtifactLink
         , groupArtifactVersionLink
         , groupLink
-        , homeLink
+        , navigation
         , parseLocation
-        , toBreadCrumb
         , toUrlHash
         )
 
@@ -14,13 +13,14 @@ import Data.Coordinate as Coord
 import Data.DependencyGraph exposing (DependencyGraph)
 import Graph exposing (NodeId)
 import Html exposing (Html, a, div, text)
-import Html.Attributes exposing (href)
+import Html.Attributes exposing (class, classList, href)
 import Navigation
 import UrlParser as P exposing ((</>), Parser, int, map, oneOf, s, string, top)
 
 
 type Page
-    = Home
+    = Help
+    | AllArtifacts
     | Group String
     | GroupArtifact String String
     | GroupArtifactVersion String String String
@@ -28,38 +28,87 @@ type Page
     | DependencyConvergence
 
 
-toBreadCrumb : Page -> DependencyGraph -> Html a
-toBreadCrumb page graph =
-    let
-        joinWithArrow items =
-            List.intersperse (text " » ") items |> div []
-    in
+type NavItem
+    = ArtifactsNav
+    | DepConvNav
+    | HelpNav
+
+
+navBar : Page -> Html a
+navBar currentPage =
+    div [ class "topnav" ]
+        [ artifactsNavLink currentPage
+        , dependencyConvergenceNavLink currentPage
+        , helpNavLink currentPage
+        ]
+
+
+navigation : Page -> DependencyGraph -> Html a
+navigation currentPage graph =
+    div []
+        [ navBar currentPage
+        , breadcrumb currentPage graph
+        ]
+
+
+toNavItem : Page -> NavItem
+toNavItem page =
     case page of
-        Home ->
-            joinWithArrow [ text "Home" ]
+        Help ->
+            HelpNav
 
         DependencyConvergence ->
+            DepConvNav
+
+        AllArtifacts ->
+            ArtifactsNav
+
+        Group _ ->
+            ArtifactsNav
+
+        GroupArtifact _ _ ->
+            ArtifactsNav
+
+        GroupArtifactVersion _ _ _ ->
+            ArtifactsNav
+
+        CoordinateDetails _ ->
+            ArtifactsNav
+
+
+breadcrumb : Page -> DependencyGraph -> Html a
+breadcrumb page graph =
+    let
+        joinWithArrow items =
+            List.intersperse (text " » ") items |> div [ class "breadcrumb" ]
+    in
+    case page of
+        Help ->
+            text ""
+
+        DependencyConvergence ->
+            text ""
+
+        AllArtifacts ->
             joinWithArrow
-                [ homeLink
-                , text "Dependency Convergence"
-                ]
+                [ text "All Artifacts" ]
 
         Group groupId ->
             joinWithArrow
-                [ homeLink
+                [ allArtifactsLink
                 , text groupId
                 ]
 
         GroupArtifact groupId artifactId ->
             joinWithArrow
-                [ homeLink
+                [ allArtifactsLink
                 , groupLink groupId
                 , text artifactId
                 ]
 
         GroupArtifactVersion groupId artifactId version ->
             joinWithArrow
-                [ homeLink
+                [ allArtifactsLink
                 , groupLink groupId
                 , groupArtifactLink groupId artifactId
                 , text version
@@ -68,7 +117,7 @@ toBreadCrumb page graph =
         CoordinateDetails nodeId ->
             case Graph.get nodeId graph of
                 Nothing ->
-                    homeLink
+                    text ""
 
                 Just ctx ->
                     let
@@ -76,7 +125,7 @@ toBreadCrumb page graph =
                             ctx.node.label
                     in
                     joinWithArrow
-                        [ homeLink
+                        [ allArtifactsLink
                         , groupLink groupId
                         , groupArtifactLink groupId artifactId
                         , groupArtifactVersionLink groupId artifactId version
@@ -84,9 +133,30 @@ toBreadCrumb page graph =
                         ]
 
 
-homeLink : Html msg
-homeLink =
-    a [ href <| toUrlHash Home ] [ text "Home" ]
+allArtifactsLink : Html msg
+allArtifactsLink =
+    a [ href <| toUrlHash AllArtifacts ] [ text "All Artifacts" ]
+
+
+artifactsNavLink : Page -> Html msg
+artifactsNavLink =
+    navLink "Artifacts" AllArtifacts ArtifactsNav
+
+
+dependencyConvergenceNavLink : Page -> Html msg
+dependencyConvergenceNavLink =
+    navLink "Dependency Convergence" DependencyConvergence DepConvNav
+
+
+helpNavLink : Page -> Html msg
+helpNavLink =
+    navLink "Help" Help HelpNav
+
+
+navLink : String -> Page -> NavItem -> Page -> Html msg
+navLink linkText targetPage navItem currentPage =
+    a [ href <| toUrlHash targetPage, classList [ ( "active", toNavItem currentPage == navItem ) ] ]
+        [ text linkText ]
 
 
 groupLink : String -> Html msg
@@ -109,8 +179,11 @@ toUrlHash page =
     let
         pieces =
             case page of
-                Home ->
+                AllArtifacts ->
                     []
+
+                Help ->
+                    [ "help" ]
 
                 DependencyConvergence ->
                     [ "dependency-convergence" ]
@@ -133,7 +206,8 @@ toUrlHash page =
 route : Parser (Page -> a) a
 route =
     oneOf
-        [ map Home top
+        [ map AllArtifacts top
+        , map Help (s "help")
         , map Group (s "group" </> string)
         , map DependencyConvergence (s "dependency-convergence")
         , map GroupArtifact (s "group" </> string </> s "artifact" </> string)
@@ -144,4 +218,4 @@ route =
 
 parseLocation : Navigation.Location -> Page
 parseLocation location =
-    P.parseHash route location |> Maybe.withDefault Home
+    P.parseHash route location |> Maybe.withDefault AllArtifacts
