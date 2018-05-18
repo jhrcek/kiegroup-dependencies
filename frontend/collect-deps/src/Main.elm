@@ -109,7 +109,7 @@ view model =
             text "not asked"
 
         Loading ->
-            text "loading"
+            div [ class "spinner" ] []
 
         Failure e ->
             text <| toString e
