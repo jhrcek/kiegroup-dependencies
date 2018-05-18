@@ -11,6 +11,7 @@ module Data.DependencyGraph
         , groupArtifactFilter
         , groupArtifactVersionFilter
         , groupFilter
+        , ourGroupIds
         )
 
 import Data.Coordinate as Coord exposing (BackendCoordinate, Coordinate)

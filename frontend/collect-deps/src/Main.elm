@@ -263,6 +263,48 @@ viewIf test html =
 
 viewHelp : Html a
 viewHelp =
-    Markdown.toHtml [] """
-TODO
+    Markdown.toHtml [] <|
+        """
+# What is this?
+
+An interactive report showing all artifacts built from [kiegroup](https://github.com/kiegroup) repositories.
+All the artifacts that are part of `droolsjbpm-build-bootstrap/scripts/mvn-all.sh clean install` build
+are included, as well as their transitive dependencies.
+
+# What does DDs, TDs, RDs and RTDs mean?
+
+- DDs - number of **D**irect **D**ependencies of the artifact
+- TDs - number of **T**ransitive **D**ependencies of the artifact. This includes direct dependencies, their dependencies and so on recursively.
+- RDs - number of **R**everse **D**ependencies of the artifact. Reverse dependency of given artifact has this artifact as direct dependency.
+- RTDs - number of **R**everse **T**ransitive **D**ependencies of the artifact. This is dual of TDs - all artifacts that directly or transitively depend on this artifact.
+
+The following picture illustrates the concepts (arrow x -> y represents the fact that y is direct dependency of x):
+
+![Example explaining what DDs, TDs, RDs and RTDs mean](img/dep-example.png "Example explaining what DDs, TDs, RDs and RTDs mean")
+
+# What do the blue rows mean?
+
+The blue rows highlight artifacts, whose sources come (most likely) from kiegroup repositories.
+They are recognized heuristically by groupId starting with one of the following prefixes:
+"""
+            ++ String.join "\n" (List.map (\g -> "- " ++ g) DepGraph.ourGroupIds)
+            ++ """
+
+# Where do the data come from?
+
+The data are based on the reports produced by
+
+```bash
+./droolsjbpm-build-bootstrap/script/mvn-all.sh dependency:tree -DoutputType=tgf -DoutputFile=deps.tgf -DfullProfile
+```
+
+That command produces about 900 [TGF](https://en.wikipedia.org/wiki/Trivial_Graph_Format) files (1 for each maven module).
+Each of these represents dependency tree of one artifact.
+Using a script, these files are merged into [dependency-graph.json](dependency-graph.json).
+The nodes of the graph correspond to maven coordinates and edges represent relation of direct dependency among artifacts.
+This website is a single page application for browsing this graph.
+
+# Can you add feature XYZ?
+
+Feel free to [open an issue](https://github.com/jhrcek/kiegroup-dependencies/issues) if you have ideas how to make this report better or more useful.
 """
