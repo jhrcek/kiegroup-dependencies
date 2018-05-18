@@ -14,10 +14,11 @@ module Data.DependencyGraph
         , ourGroupIds
         )
 
+import Array exposing (Array)
 import Data.Coordinate as Coord exposing (BackendCoordinate, Coordinate)
 import Data.Scope as Scope exposing (Scope)
 import Graph exposing (Adjacency, Edge, Graph, Node, NodeContext, NodeId)
-import IntDict exposing (IntDict)
+import IntDict
 import Json.Decode as Decode exposing (Decoder)
 import Set exposing (Set)
 
@@ -86,8 +87,8 @@ calculateFrontentData backendDependencyGraph =
             , qualifier = backendCoord.qualifier
             , version = backendCoord.version
             , isOur = isOurGroupId backendCoord.groupId
-            , transitiveDepsCount = IntDict.get id transitiveCounts |> Maybe.withDefault 0
-            , reverseTransitiveDepsCount = IntDict.get id reverseTransitiveCounts |> Maybe.withDefault 0
+            , transitiveDepsCount = Array.get id transitiveCounts |> Maybe.withDefault 0
+            , reverseTransitiveDepsCount = Array.get id reverseTransitiveCounts |> Maybe.withDefault 0
             }
     in
     Graph.mapContexts addInfoToContext backendDependencyGraph
@@ -110,8 +111,8 @@ ourGroupIds =
 
 
 type alias DependencyCounts =
-    { transitiveCounts : IntDict Int
-    , reverseTransitiveCounts : IntDict Int
+    { transitiveCounts : Array Int
+    , reverseTransitiveCounts : Array Int
     }
 
 
@@ -125,18 +126,18 @@ countTransitiveDependencies graph =
         processNodeContext :
             (NodeContext BackendCoordinate Scope -> Adjacency Scope)
             -> NodeContext BackendCoordinate Scope
-            -> IntDict (Set Int)
-            -> IntDict (Set Int)
+            -> Array (Set Int)
+            -> Array (Set Int)
         processNodeContext direction nodeContext artId_to_depIds =
             let
                 directDepIds =
                     IntDict.keys <| direction nodeContext
 
                 transitiveDepsSet =
-                    List.filterMap (\depId -> IntDict.get depId artId_to_depIds) directDepIds
+                    List.filterMap (\depId -> Array.get depId artId_to_depIds) directDepIds
                         |> List.foldl Set.union (Set.fromList directDepIds)
             in
-            IntDict.insert nodeContext.node.id transitiveDepsSet artId_to_depIds
+            Array.set nodeContext.node.id transitiveDepsSet artId_to_depIds
     in
     case Graph.checkAcyclic graph of
         Ok acyclicGraph ->
@@ -144,14 +145,14 @@ countTransitiveDependencies graph =
               -- folding function processes node x, all its dependencies are already processed
               transitiveCounts =
                 Graph.topologicalSort acyclicGraph
-                    |> List.foldr (processNodeContext .outgoing) IntDict.empty
-                    |> IntDict.map (\_ depSet -> Set.size depSet)
+                    |> List.foldr (processNodeContext .outgoing) (Array.repeat (Graph.size graph) Set.empty)
+                    |> Array.map (\depSet -> Set.size depSet)
 
             -- process in topological order in order to get reverse deps
             , reverseTransitiveCounts =
                 Graph.topologicalSort acyclicGraph
-                    |> List.foldl (processNodeContext .incoming) IntDict.empty
-                    |> IntDict.map (\_ depSet -> Set.size depSet)
+                    |> List.foldl (processNodeContext .incoming) (Array.repeat (Graph.size graph) Set.empty)
+                    |> Array.map (\depSet -> Set.size depSet)
             }
 
         Err edgesFormingCycle ->
@@ -159,8 +160,8 @@ countTransitiveDependencies graph =
                 ("The dependency graph was not acyclic! The following edges form a cycle: "
                     ++ toString edgesFormingCycle
                 )
-                { transitiveCounts = IntDict.empty
-                , reverseTransitiveCounts = IntDict.empty
+                { transitiveCounts = Array.empty
+                , reverseTransitiveCounts = Array.empty
                 }
 
 
