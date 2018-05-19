@@ -66,8 +66,8 @@ groupArtifactVersionFilter groupId artifactId version node =
 calculateFrontentData : BackendDependencyGraph -> DependencyGraph
 calculateFrontentData backendDependencyGraph =
     let
-        { transitiveCounts, reverseTransitiveCounts } =
-            countTransitiveDependencies backendDependencyGraph
+        depCounts =
+            countDependencies backendDependencyGraph
 
         addInfoToContext : NodeContext BackendCoordinate e -> NodeContext Coordinate e
         addInfoToContext ctx =
@@ -87,8 +87,10 @@ calculateFrontentData backendDependencyGraph =
             , qualifier = backendCoord.qualifier
             , version = backendCoord.version
             , isOur = isOurGroupId backendCoord.groupId
-            , transitiveDepsCount = Array.get id transitiveCounts |> Maybe.withDefault 0
-            , reverseTransitiveDepsCount = Array.get id reverseTransitiveCounts |> Maybe.withDefault 0
+            , directDepsCount = Array.get id depCounts.direct |> Maybe.withDefault 0
+            , transitiveDepsCount = Array.get id depCounts.transitive |> Maybe.withDefault 0
+            , reverseDirectDepsCount = Array.get id depCounts.reverseDirect |> Maybe.withDefault 0
+            , reverseTransitiveDepsCount = Array.get id depCounts.reverseTransitive |> Maybe.withDefault 0
             }
     in
     Graph.mapContexts addInfoToContext backendDependencyGraph
@@ -111,20 +113,37 @@ ourGroupIds =
 
 
 type alias DependencyCounts =
-    { transitiveCounts : Array Int
-    , reverseTransitiveCounts : Array Int
+    { direct : Array Int
+    , transitive : Array Int
+    , reverseDirect : Array Int
+    , reverseTransitive : Array Int
     }
+
+
+emptyCounts : DependencyCounts
+emptyCounts =
+    { direct = Array.empty
+    , transitive = Array.empty
+    , reverseDirect = Array.empty
+    , reverseTransitive = Array.empty
+    }
+
+
+{-| Function choosing either outgoing or incoming edges
+-}
+type alias DirectionSelector =
+    NodeContext BackendCoordinate Scope -> Adjacency Scope
 
 
 {-| This is very expensive operation expected to be done only once - at app initialization!
 -}
-countTransitiveDependencies : BackendDependencyGraph -> DependencyCounts
-countTransitiveDependencies graph =
+countDependencies : BackendDependencyGraph -> DependencyCounts
+countDependencies graph =
     let
         -- folding function takes context and unions all its direct dependency ids
         -- with all indirect dependency ids
         processNodeContext :
-            (NodeContext BackendCoordinate Scope -> Adjacency Scope)
+            DirectionSelector
             -> NodeContext BackendCoordinate Scope
             -> Array (Set Int)
             -> Array (Set Int)
@@ -138,18 +157,28 @@ countTransitiveDependencies graph =
                         |> List.foldl Set.union (Set.fromList directDepIds)
             in
             Array.set nodeContext.node.id transitiveDepsSet artId_to_depIds
+
+        countDirect : BackendDependencyGraph -> DirectionSelector -> Array Int
+        countDirect gr direction =
+            Graph.fold
+                (\ctx arr -> Array.set ctx.node.id (IntDict.size (direction ctx)) arr)
+                (Array.repeat (Graph.size gr) 0)
+                gr
     in
     case Graph.checkAcyclic graph of
         Ok acyclicGraph ->
-            { -- process the nodes in order of reverse topological sort, so that at the point when
-              -- folding function processes node x, all its dependencies are already processed
-              transitiveCounts =
+            { direct = countDirect graph .outgoing
+
+            -- process the nodes in order of reverse topological sort, so that at the point when
+            -- folding function processes node x, all its dependencies are already processed
+            , transitive =
                 Graph.topologicalSort acyclicGraph
                     |> List.foldr (processNodeContext .outgoing) (Array.repeat (Graph.size graph) Set.empty)
                     |> Array.map (\depSet -> Set.size depSet)
+            , reverseDirect = countDirect graph .incoming
 
             -- process in topological order in order to get reverse deps
-            , reverseTransitiveCounts =
+            , reverseTransitive =
                 Graph.topologicalSort acyclicGraph
                     |> List.foldl (processNodeContext .incoming) (Array.repeat (Graph.size graph) Set.empty)
                     |> Array.map (\depSet -> Set.size depSet)
@@ -157,12 +186,8 @@ countTransitiveDependencies graph =
 
         Err edgesFormingCycle ->
             Debug.log
-                ("The dependency graph was not acyclic! The following edges form a cycle: "
-                    ++ toString edgesFormingCycle
-                )
-                { transitiveCounts = Array.empty
-                , reverseTransitiveCounts = Array.empty
-                }
+                ("The dependency graph was not acyclic! The following edges form a cycle: " ++ toString edgesFormingCycle)
+                emptyCounts
 
 
 

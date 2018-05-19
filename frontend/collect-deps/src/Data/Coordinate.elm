@@ -31,7 +31,9 @@ type alias BackendCoordinate =
 type alias Coordinate =
     ExtensibleCoordinate
         { isOur : Bool
+        , directDepsCount : Int
         , transitiveDepsCount : Int
+        , reverseDirectDepsCount : Int
         , reverseTransitiveDepsCount : Int
         }
 

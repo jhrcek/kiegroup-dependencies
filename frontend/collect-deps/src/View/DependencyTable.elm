@@ -24,8 +24,10 @@ tableConfig sortMsg =
             , versionLinkColumn
             , Table.stringColumn "Packaging" (.label >> .packaging)
             , Table.stringColumn "Qualifier" (\n -> Maybe.withDefault "-" n.label.qualifier)
-            , Table.intColumn "TDs" (.label >> .transitiveDepsCount)
             , Table.intColumn "RTDs" (.label >> .reverseTransitiveDepsCount)
+            , Table.intColumn "RDs" (.label >> .reverseDirectDepsCount)
+            , Table.intColumn "DDs" (.label >> .directDepsCount)
+            , Table.intColumn "TDs" (.label >> .transitiveDepsCount)
             , detailsLinkColumn
             ]
         , customizations = highlightOurCoordinates
