@@ -1,4 +1,11 @@
-module Data.Coordinate exposing (BackendCoordinate, Coordinate, decoder, highlight, toString)
+module Data.Coordinate
+    exposing
+        ( Coordinate
+        , decoder
+        , highlight
+        , ourGroupIds
+        , toString
+        )
 
 import Html exposing (Attribute)
 import Html.Attributes exposing (classList)
@@ -6,49 +13,51 @@ import Json.Decode as Decode exposing (Decoder, string)
 import Json.Decode.Pipeline exposing (decode, optional, required)
 
 
-type alias ExtensibleCoordinate a =
-    { a
-        | groupId : String
-        , artifactId : String
-        , packaging : String
-        , qualifier : Maybe String
-        , version : String
+type alias Coordinate =
+    { groupId : String
+    , artifactId : String
+    , packaging : String
+    , qualifier : Maybe String
+    , version : String
+    , isOur : Bool
+    , directDepsCount : Int
+    , transitiveDepsCount : Int
+    , reverseDirectDepsCount : Int
+    , reverseTransitiveDepsCount : Int
     }
 
 
-{-| From the backend we get just group:artifact:packaging:qualifier:version
--}
-type alias BackendCoordinate =
-    ExtensibleCoordinate {}
-
-
-{-| In the frontend we calculate and cache additional info for speed
-
-  - isOur - is it kiegroup or 3rd party dep?
-  - transitiveDepsCount - number of transitive dependencies
-
--}
-type alias Coordinate =
-    ExtensibleCoordinate
-        { isOur : Bool
-        , directDepsCount : Int
-        , transitiveDepsCount : Int
-        , reverseDirectDepsCount : Int
-        , reverseTransitiveDepsCount : Int
-        }
-
-
-decoder : Decoder BackendCoordinate
+decoder : Decoder Coordinate
 decoder =
+    Decode.map2 (,)
+        (Decode.index 0 coordDecoder)
+        (Decode.index 1 (Decode.list Decode.int))
+        |> Decode.andThen
+            (\( ( g, a, p, q, v ), counts ) ->
+                case counts of
+                    [ revTrans, rev, dir, trans ] ->
+                        Decode.succeed
+                            { groupId = g
+                            , artifactId = a
+                            , packaging = p
+                            , qualifier = q
+                            , version = v
+                            , isOur = isOurGroupId g
+                            , directDepsCount = dir
+                            , transitiveDepsCount = trans
+                            , reverseDirectDepsCount = rev
+                            , reverseTransitiveDepsCount = revTrans
+                            }
+
+                    invalid ->
+                        Decode.fail <| "Dependency counts contains unexpected fields: " ++ Basics.toString invalid
+            )
+
+
+coordDecoder : Decoder ( String, String, String, Maybe String, String )
+coordDecoder =
     decode
-        (\g a p q v ->
-            { groupId = g
-            , artifactId = a
-            , packaging = p
-            , qualifier = q
-            , version = v
-            }
-        )
+        (\g a p q v -> ( g, a, p, q, v ))
         |> required "gr" string
         |> required "ar" string
         |> required "pa" string
@@ -56,7 +65,7 @@ decoder =
         |> required "ve" string
 
 
-toString : ExtensibleCoordinate a -> String
+toString : Coordinate -> String
 toString c =
     let
         fields =
@@ -73,3 +82,19 @@ toString c =
 highlight : Bool -> Attribute msg
 highlight isHighlighted =
     classList [ ( "highlight", isHighlighted ) ]
+
+
+isOurGroupId : String -> Bool
+isOurGroupId testedGroupId =
+    List.any (\ourGroupId -> String.startsWith ourGroupId testedGroupId) ourGroupIds
+
+
+ourGroupIds : List String
+ourGroupIds =
+    [ "org.kie"
+    , "org.drools"
+    , "org.jbpm"
+    , "org.uberfire"
+    , "org.dashbuilder"
+    , "org.optaplanner"
+    ]
