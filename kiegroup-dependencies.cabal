@@ -15,14 +15,16 @@ extra-source-files:
 
 library
     exposed-modules:
-        DepGraph
-        TGF
-        TGF.IO
+        Data.Coordinate
+        Data.DepGraph
+        Maven.DepGraph.Report
+        Maven.DepGraph.Report.IO
         Util
     build-depends:
         aeson,
         attoparsec,
         base,
+        bytestring,
         containers,
         fgl,
         foldl,

@@ -2,21 +2,15 @@ digraph Concepts {
     rankdir=BT
 
     1 [label="Github Organization"]
-    2 [label="Git Repo"]
+    2 [label="Repository"]
     3 [label="Artifact"]
     4 [label="Maven Coordinate"]
     5 [label="Maven Module"]
     6 [label="Maven Project"]
-    7 [label="Kie Artifact"]
-    8 [label="3rd party artifact"]
-    9 [label="Dependency Tree"]
-
+    
     2->1[label="is in"]
     3->5[label="is built from"]
     5->6[label="is part of"]
     6->2[label="resides in"]
     3->4[label="is identified by"]
-    {7,8}->3[label="is a"]
-    3->9 [label="has"]
-    9->3 [label="expresses\ndependency\non other"]
 }

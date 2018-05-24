@@ -6,7 +6,7 @@ module Main where
 import           Control.Monad.IO.Class (MonadIO)
 import qualified Data.Aeson             as Aeson
 import qualified Data.ByteString.Lazy   as BS
-import qualified DepGraph
+import qualified Data.DepGraph          as DepGraph
 import           Prelude                hiding (FilePath)
 import           Turtle                 (FilePath, argPath, options)
 
@@ -19,8 +19,9 @@ $ stack exec collect-deps -- PATH/TO/COMMON/DIR
 -}
 main :: IO ()
 main = do
-    kiegroupDir <- parseArgs
-    dependencyGraph <- DepGraph.constructDependencyGraphWithCounts kiegroupDir
+    -- kiegroupDir <- parseArgs
+    let aReport = "/home/jhrcek/Devel/github.com/kiegroup/kie-wb-distributions/dependency-graph.json"--
+    dependencyGraph <- DepGraph.constructDependencyGraphWithCounts aReport
     BS.writeFile outputFile $ Aeson.encode dependencyGraph
     putStrLn $ "Dependency graph written to " ++ outputFile
 

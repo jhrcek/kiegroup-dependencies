@@ -12,7 +12,7 @@ module Data.DependencyGraph
         )
 
 import Data.Coordinate as Coord exposing (Coordinate)
-import Data.Scope as Scope exposing (Scope)
+import Data.Scope as Scope exposing (Scope(Compile))
 import Graph exposing (Edge, Graph, Node, NodeContext)
 import Json.Decode as Decode exposing (Decoder)
 
@@ -69,7 +69,7 @@ edgeDecoder =
     Decode.map3 Edge
         (Decode.index 0 Decode.int)
         (Decode.index 1 Decode.int)
-        (Decode.index 2 Scope.decoder)
+        (Decode.succeed Compile)
 
 
 nodeDecoder : Decoder (Node Coordinate)

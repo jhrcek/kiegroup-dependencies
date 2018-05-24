@@ -2,50 +2,27 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
 
-module TGF
-    ( Coordinate(..)
-    , Scope(..)
-    , Tgf(..)
-    , TgfDepGraph
-    , parseDepGraph
-    ) where
+module Data.Coordinate (Coordinate(..), Scope, scopeP, coordinateP) where
 
 import           Data.Aeson.TH
-import           Data.Attoparsec.Text       (Parser, char, choice, decimal,
-                                             endOfInput, endOfLine, isEndOfLine,
-                                             parseOnly, sepBy, skipMany, space,
-                                             string, takeTill, takeWhile, (<?>))
-import           Data.Char                  (isDigit, toLower)
-import           Data.Functor               (($>))
-import           Data.Set                   (Set)
-import qualified Data.Set                   as Set
-import           Data.Text                  (Text)
-import qualified Data.Text                  as Txt
-import           Prelude                    hiding (takeWhile)
+import           Data.Attoparsec.Text (Parser, char, choice, isEndOfLine,
+                                       string, takeTill, takeWhile, (<?>))
+import           Data.Char            (isDigit, toLower)
+import           Data.Functor         (($>))
+import           Data.Set             (Set)
+import qualified Data.Set             as Set
+import           Data.Text            (Text)
+import qualified Data.Text            as Txt
+import           Prelude              hiding (takeWhile)
 
-data Tgf n e = Tgf
-    { nodeDeclarations :: [(Int, n)]
-    , edgeDeclarations :: [(Int, Int, e)]
-    }
-
-type TgfDepGraph = Tgf Coordinate Scope
-
-parseDepGraph :: Text -> Either String TgfDepGraph
-parseDepGraph =
-    parseOnly depGraphP
-
-depGraphP :: Parser TgfDepGraph
-depGraphP =
-    tgfP coordinateP scopeP
-
-tgfP :: Parser n -> Parser e -> Parser (Tgf n e)
-tgfP nodeLabelParser edgeLabelParser = Tgf
-    <$> (nodeDeclP `sepBy` endOfLine) <* (endOfLine >> char '#' >> endOfLine)
-    <*> (edgeDeclP `sepBy` endOfLine) <* (skipMany space >> endOfInput)
-  where
-    nodeDeclP = (,) <$> dec <*> nodeLabelParser
-    edgeDeclP = (,,) <$> dec <*> dec <*> edgeLabelParser
-    dec = decimal <* space
+{-| Maven Coordinates as described in https://maven.apache.org/pom.html#Maven_Coordinates -}
+data Coordinate = Coordinate
+    { cGroupId    :: Text
+    , cArtifactId :: Text
+    , cPackaging  :: Text
+    , cQualifier  :: Maybe Text
+    , cVersion    :: Text
+    } deriving (Eq, Ord)
 
 data Scope = Compile | Provided | Runtime | System | Test
     deriving (Eq, Ord, Show)
@@ -58,15 +35,6 @@ scopeP = choice
     , string "system" $> System
     , string "test" $>  Test
     ]
-
-{-| Maven Coordinates as described in https://maven.apache.org/pom.html#Maven_Coordinates -}
-data Coordinate = Coordinate
-    { cGroupId    :: Text
-    , cArtifactId :: Text
-    , cPackaging  :: Text
-    , cQualifier  :: Maybe Text
-    , cVersion    :: Text
-    } deriving (Eq, Ord)
 
 instance Show Coordinate where
     show (Coordinate grp art pac mayQualifier ver) =
@@ -132,5 +100,5 @@ $(deriveJSON defaultOptions{ fieldLabelModifier = map toLower . take 2 . drop 1
                            } ''Coordinate)
 
 $(deriveJSON defaultOptions{ fieldLabelModifier = map toLower
-                            , constructorTagModifier = \t -> [toLower (head t)]
+                            , constructorTagModifier = map toLower
                             } ''Scope)
