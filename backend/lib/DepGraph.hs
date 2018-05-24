@@ -5,7 +5,7 @@ module DepGraph
     ( DependencyGraphWithCounts
     , constructDependencyGraphWithCounts
     ) where
-
+import qualified Debug.Trace as D
 import           Control.Foldl                     (FoldM (FoldM))
 import           Control.Monad.State
 import           Data.Aeson                        (ToJSON, object, toJSON,
@@ -21,8 +21,7 @@ import qualified Data.IntSet                       as IntSet
 import qualified Data.List                         as List
 import           Data.Map                          (Map)
 import qualified Data.Map                          as Map
-import           Data.Set                          (Set)
-import qualified Data.Set                          as Set
+import           Data.Monoid                       ((<>))
 import           Data.Tuple                        (swap)
 import           Prelude                           hiding (FilePath)
 import           TGF                               (Coordinate, Scope,
@@ -60,7 +59,7 @@ findDependencyReports =
 -- After merging of each dep. tree it's converted to DependencyGraph
 data DepGraphAcc = DepGraphAcc
     { coordinates :: Map Coordinate Int
-    , directDeps  :: Set (Int, Int, Scope)
+    , directDeps  :: Map (Int, Int) [(Scope, Int)]
     } deriving Show
 
 foldDepTrees :: FoldM IO FilePath DepGraphAcc
@@ -77,7 +76,7 @@ foldDepTrees =
     initial :: IO DepGraphAcc
     initial = return DepGraphAcc
         { coordinates = Map.empty
-        , directDeps = Set.empty
+        , directDeps = Map.empty
         }
 
     extract :: DepGraphAcc -> IO DepGraphAcc
@@ -101,9 +100,9 @@ processTgf depTrees tgf = DepGraphAcc
     --      , map of coord IDs local to processed TGF file to global IDs)
     (newCoordinates, oldToNewIdMap) = List.foldl' addNode (oldArtifacts, IntMap.empty) nodeDecls
 
-    directDepsFromTgf = Set.fromList $ map (\(from, to, label) -> (oldToNewIdMap ! from, oldToNewIdMap ! to, label)) edgeDecls
+    directDepsFromTgf = Map.fromListWith (<>) $ map (\(from, to, label) -> ( (oldToNewIdMap ! from, oldToNewIdMap ! to) ,  [(label, 1)])) edgeDecls
 
-    newDirectDeps = Set.union directDepsFromTgf oldDirectDeps
+    newDirectDeps = Map.unionWith (<>) directDepsFromTgf oldDirectDeps
 
     addNode :: (Map Coordinate Int, IntMap Int) -> (Graph.Node, Coordinate) -> (Map Coordinate Int, IntMap Int)
     addNode (arts, m) (tgfNodeId, coord) =
@@ -115,7 +114,7 @@ processTgf depTrees tgf = DepGraphAcc
 
 -- Global dependency graph into which all dependency trees were merged
 newtype DependencyGraph =
-    DependencyGraph (Gr Coordinate Scope)
+    DependencyGraph (Gr Coordinate [(Scope, Int)])
     deriving (Show)
 
 toGraph :: DepGraphAcc -> DependencyGraph
@@ -123,7 +122,12 @@ toGraph DepGraphAcc{coordinates, directDeps} =
     DependencyGraph $ Graph.mkGraph nodes edges
   where
     nodes = swap <$> Map.assocs coordinates
-    edges = Set.toList directDeps
+    edges = (\((from,to), scopeCounts) -> (from, to,
+      let cnts = Map.toList $ Map.fromListWith (+) scopeCounts
+      in if length cnts > 1 then
+            D.trace (show cnts) cnts
+         else
+           cnts)) <$> Map.toList directDeps
 
 {- After merging all the dep trees, we add to each node additional info about
  number of direct / transitive / reverse direct / reverse transitive dependencies -}
@@ -147,10 +151,10 @@ countDependencies (DependencyGraph graph) = DependencyCounts{..}
     topSortedNodeIds :: [Node]
     topSortedNodeIds = DFS.topsort graph
 
-    topSortedContexts :: [Context Coordinate Scope]
+    topSortedContexts :: [Context Coordinate [(Scope, Int)]]
     topSortedContexts = Graph.context graph <$> topSortedNodeIds
 
-    processNodeContext :: (Context Coordinate Scope -> [Graph.Node]) -> Context Coordinate Scope -> IntMap IntSet -> IntMap IntSet
+    processNodeContext :: (Context Coordinate [(Scope, Int)] -> [Graph.Node]) -> Context Coordinate [(Scope, Int)] -> IntMap IntSet -> IntMap IntSet
     processNodeContext  direction ctx artId_to_depIds =
         IntMap.insert (Graph.node' ctx) transitiveDepsSet artId_to_depIds
       where
@@ -171,7 +175,7 @@ countDependencies (DependencyGraph graph) = DependencyCounts{..}
 -- Final representation to be sent to frontend, which - in addition to coordinate info for each artifact -
 -- contains info about number of its dependencies
 newtype DependencyGraphWithCounts =
-    DependencyGraphWithCounts (Gr (Coordinate, (Int, Int, Int, Int)) Scope)
+    DependencyGraphWithCounts (Gr (Coordinate, (Int, Int, Int, Int)) [(Scope, Int)])
     deriving (Show)
 
 instance ToJSON DependencyGraphWithCounts where
