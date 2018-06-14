@@ -39,7 +39,7 @@ dependency:tree -DoutputType=tgf  -DoutputFile=deps.tgf  -DfullProfile
 
 4. Build the tool
 ```
-make build
+make back
 ```
 
 5. Run the tool to collect all dependency reports into one file. This will produce `dependency-graph.json` containing all dependency data.
